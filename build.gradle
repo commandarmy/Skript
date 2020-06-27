@@ -1,18 +1,11 @@
 import org.apache.tools.ant.filters.ReplaceTokens
 
 plugins {
-	id "com.github.hierynomus.license" version "0.14.0"
+	id 'com.github.hierynomus.license' version '0.15.0'
 }
 
 apply plugin: 'java'
 apply plugin: 'maven-publish'
-
-// Substitute dependencies' versions of Bukkit with latest Paper API
-configurations.all {
-	resolutionStrategy.dependencySubstitution {
-		substitute module('org.bukkit:bukkit') with module('com.destroystokyo.paper:paper-api:1.14-R0.1-SNAPSHOT')
-	}
-}
 
 allprojects {
 	repositories {
@@ -55,8 +48,9 @@ allprojects {
 	dependencies {
 		ecj 'org.eclipse.jdt:ecj:3.15.0'
 	}
-	
-	sourceCompatibility = 1.8
+
+	sourceCompatibility = targetCompatibility = 1.8
+
 	compileJava {
 		options.fork = true
 		options.encoding = 'UTF-8'
@@ -87,22 +81,22 @@ dependencies {
 
 processResources {
 	filter ReplaceTokens, tokens: [
-		"version": System.getenv("SKRIPT_VERSION") == null ? project.property("version") : System.getenv("SKRIPT_VERSION"),
-		'today': "unknown", // Don't leak information about system this was built on
-		"release-flavor": "selfbuilt-unknown", // Note: 'selfbuilt' prefix makes updater report a custom build
-		"release-channel": "none", // No updates, so anything else wouldn't make sense
-		"release-updater": "ch.njol.skript.update.NoUpdateChecker", // Disable update checking
-		"release-source": "",
-		"release-download": "null"
+		'version': System.getenv('SKRIPT_VERSION') ?: project.property('version'),
+		'today': 'unknown', // Don't leak information about system this was built on
+		'release-flavor': 'selfbuilt-unknown', // Note: 'selfbuilt' prefix makes updater report a custom build
+		'release-channel': 'none', // No updates, so anything else wouldn't make sense
+		'release-updater': 'ch.njol.skript.update.NoUpdateChecker', // Disable update checking
+		'release-source': '',
+		'release-download': 'null'
 	]
 }
 
 jar {
-	archiveName System.getenv('SKRIPT_JAR_NAME') == null ? 'Skript.jar' : System.getenv("SKRIPT_JAR_NAME")
+	archiveName System.getenv('SKRIPT_JAR_NAME') ?: 'Skript.jar'
 
 	manifest {
-		attributes("Name": "ch/njol/skript",
-				"Sealed": "true")
+		attributes('Name': 'ch/njol/skript',
+				'Sealed': 'true')
 	}
 
 	from('skript-aliases') {
@@ -129,7 +123,7 @@ task checkAliases {
 	doLast {
 		def aliasFolder = new File('skript-aliases')
 		if (!aliasFolder.exists() || aliasFolder.listFiles().length == 0) {
-			throw new InvalidUserDataException("Aliases are missing from 'skript-aliases' folder. Consider fetching submodules with 'git submodule update --init'.")
+			throw new InvalidUserDataException('Aliases are missing from \'skript-aliases\' folder. Consider fetching submodules with \'git submodule update --init\'.')
 		}
 	}
 }
@@ -143,21 +137,21 @@ task sourceJar(type: Jar) {
 publishing {
 	publications {
 		mavenJava(MavenPublication) {
-			groupId "ch.njol"
-			artifactId "skript"
-			version project.property("version")
+			groupId 'ch.njol'
+			artifactId 'skript'
+			version project.property('version')
 
 			from components.java
 
 			artifact sourceJar {
-				classifier "sources"
+				classifier 'sources'
 			}
 		}
 	}
 
 	repositories {
 		maven {
-			url "file:///itemapi_repo/"
+			url 'file:///itemapi_repo/'
 		}
 	}
 }
@@ -201,7 +195,7 @@ void createTestTask(String name, String environments, boolean devMode) {
 				"build${File.separator}libs${File.separator}Skript.jar${File.pathSeparator}" +
 					project.configurations.runtimeClasspath.find {it.name.startsWith('gson')},
 				'ch.njol.skript.tests.platform.PlatformMain',
-				'test_runners', 'src/test/skript/tests', 'src/test/resources/runner_data', environments, "" + devMode
+				'test_runners', 'src/test/skript/tests', 'src/test/resources/runner_data', environments, '' + devMode
 	}
 }
 
@@ -209,28 +203,27 @@ void createTestTask(String name, String environments, boolean devMode) {
 createTestTask('quickTest', 'src/test/skript/environments/main/paper-1.15.2.json', false)
 createTestTask('skriptTest', 'src/test/skript/environments/main', false)
 createTestTask('skriptTestFull', 'src/test/skript/environments/', false)
-createTestTask('skriptTestDev', 'src/test/skript/environments/main/' + (System.getProperty('skript.testEnv') == null
-		? 'paper-1.15.2.json' : System.getProperty('skript.testEnv') + '.json'), true)
+createTestTask('skriptTestDev', "src/test/skript/environments/main/ ${System.getProperty('skript.testEnv') ?: 'paper-1.15.2.json'}.json", true)
 
 // Build flavor configurations
 task githubResources(type: ProcessResources) {
 	from ('src/main/resources') {
 		include '**'
-		version = System.getenv("SKRIPT_VERSION") == null ? project.property("version") : System.getenv("SKRIPT_VERSION")
-		def channel = "stable"
-		if (version.contains("alpha")) {
-			channel = "alpha"
-		} else if (version.contains("beta")) {
-			channel = "beta"
+		version = System.getenv('SKRIPT_VERSION') ?: project.property('version')
+		def channel = 'stable'
+		if (version.contains('alpha')) {
+			channel = 'alpha'
+		} else if (version.contains('beta')) {
+			channel = 'beta'
 		}
 		filter ReplaceTokens, tokens: [
-			"version": version,
-			"today": "" + LocalDate.now(),
-			"release-flavor": "skriptlang-github", // SkriptLang build, distributed on Github
-			"release-channel": channel, // Release channel, see above
-			"release-updater": "ch.njol.skript.update.GithubChecker", // Github API client
-			"release-source": "https://api.github.com/repos/SkriptLang/Skript/releases", // Github API URL
-			"release-download": "null" // Update checker will figure it out
+			'version': version,
+			'today': '' + LocalDate.now(),
+			'release-flavor': 'skriptlang-github', // SkriptLang build, distributed on Github
+			'release-channel': channel, // Release channel, see above
+			'release-updater': 'ch.njol.skript.update.GithubChecker', // Github API client
+			'release-source': 'https://api.github.com/repos/SkriptLang/Skript/releases', // Github API URL
+			'release-download': 'null' // Update checker will figure it out
 		]
 	}
 	into 'build/resources/main'
@@ -242,8 +235,8 @@ task githubRelease(type: Jar) {
 	archiveName = 'Skript-github.jar'
 	
 	manifest {
-		attributes("Name": "ch/njol/skript",
-				"Sealed": "true")
+		attributes('Name': 'ch/njol/skript',
+				'Sealed': 'true')
 	}
 	
 	from('skript-aliases') {
@@ -258,21 +251,21 @@ task githubRelease(type: Jar) {
 task spigotResources(type: ProcessResources) {
 	from ('src/main/resources') {
 		include '**'
-		version = System.getenv("SKRIPT_VERSION") == null ? project.property("version") : System.getenv("SKRIPT_VERSION")
-		def channel = "stable"
-		if (version.contains("alpha")) {
-			channel = "alpha"
-		} else if (version.contains("beta")) {
-			channel = "beta"
+		version = System.getenv('SKRIPT_VERSION') ?: project.property('version')
+		def channel = 'stable'
+		if (version.contains('alpha')) {
+			channel = 'alpha'
+		} else if (version.contains('beta')) {
+			channel = 'beta'
 		}
 		filter ReplaceTokens, tokens: [
-			"version": version,
-			"today": "" + LocalDate.now(),
-			"release-flavor": "skriptlang-spigot", // SkriptLang build, distributed on Spigot resources
-			"release-channel": channel, // Release channel, see above
-			"release-updater": "ch.njol.skript.update.GithubChecker", // Github API client
-			"release-source": "https://api.github.com/repos/SkriptLang/Skript/releases", // Github API URL
-			"release-download": "\"http://example.com\"" // TODO insert Spigot URL
+			'version': version,
+			'today': '' + LocalDate.now(),
+			'release-flavor': 'skriptlang-spigot', // SkriptLang build, distributed on Spigot resources
+			'release-channel': channel, // Release channel, see above
+			'release-updater': 'ch.njol.skript.update.GithubChecker', // Github API client
+			'release-source': 'https://api.github.com/repos/SkriptLang/Skript/releases', // Github API URL
+			'release-download': '"http://example.com"' // TODO insert Spigot URL
 		]
 	}
 	into 'build/resources/main'
@@ -284,8 +277,8 @@ task spigotRelease(type: Jar) {
 	archiveName = 'Skript-spigot.jar'
 	
 	manifest {
-		attributes("Name": "ch/njol/skript",
-				"Sealed": "true")
+		attributes('Name': 'ch/njol/skript',
+				'Sealed': 'true')
 	}
 	
 	from('skript-aliases') {
@@ -300,16 +293,16 @@ task spigotRelease(type: Jar) {
 task nightlyResources(type: ProcessResources) {
 	from ('src/main/resources') {
 		include '**'
-		def hash = "git rev-parse --short HEAD".execute().text.trim()
-		version = project.property("version") + "-nightly-" + hash
+		def hash = 'git rev-parse --short HEAD'.execute().text.trim()
+		version = "${project.property('version')}-nightly-$hash"
 		filter ReplaceTokens, tokens: [
-			"version": version,
-			"today": "" + LocalDate.now(),
-			"release-flavor": "skriptlang-nightly", // SkriptLang build, automatically done by CI
-			"release-channel": "alpha", // No update checking, but these are VERY unstable
-			"release-updater": "ch.njol.skript.update.NoUpdateChecker", // No autoupdates for now
-			"release-source": "",
-			"release-download": "null"
+			'version': version,
+			'today': '' + LocalDate.now(),
+			'release-flavor': 'skriptlang-nightly', // SkriptLang build, automatically done by CI
+			'release-channel': 'alpha', // No update checking, but these are VERY unstable
+			'release-updater': 'ch.njol.skript.update.NoUpdateChecker', // No autoupdates for now
+			'release-source': '',
+			'release-download': 'null'
 		]
 	}
 	into 'build/resources/main'
@@ -321,8 +314,8 @@ task nightlyRelease(type: Jar) {
 	archiveName = 'Skript-nightly.jar'
 	
 	manifest {
-		attributes("Name": "ch/njol/skript",
-				"Sealed": "true")
+		attributes('Name': 'ch/njol/skript',
+				'Sealed': 'true')
 	}
 	
 	from('skript-aliases') {
