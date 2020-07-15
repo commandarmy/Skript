@@ -177,10 +177,13 @@ contact us about any problems you might have with them.
 Current team behind Skript:
 
 * [bensku](https://github.com/bensku) (Skript maintainer/developer)
+* [TheBentoBox](https://github.com/TheBentoBox) (issue tracker manager, aliases developer)
 * [FranKusmiruk](https://github.com/FranKusmiruk) (Skript developer)
 * [Pikachu920](https://github.com/Pikachu920) (Skript developer)
 * [Nicofisi](https://github.com/Nicofisi) (Skript developer)
-* [TheBentoBox](https://github.com/TheBentoBox) (issue tracker manager, aliases developer)
+* [Wealthyturtle](https://github.com/Wealthyturtle) (Skript developer)
+* [ShaneBee](https://github.com/ShaneBeee) (Skript developer)
+* [APickledWalrus](https://github.com/APickledWalrus) (Skript developer)
 
 We should also thank [Njol](https://github.com/Njol) for creating
 Skript and [Mirreski](https://github.com/Mirreski) for maintaining it for a
