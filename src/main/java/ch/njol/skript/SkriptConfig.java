@@ -168,13 +168,8 @@ public abstract class SkriptConfig {
 		}
 	}
 	
-	final static Option<Verbosity> verbosity = new Option<Verbosity>("verbosity", Verbosity.NORMAL, new EnumParser<Verbosity>(Verbosity.class, "verbosity"))
-			.setter(new Setter<Verbosity>() {
-				@Override
-				public void set(final Verbosity v) {
-					SkriptLogger.setVerbosity(v);
-				}
-			});
+	final static Option<Verbosity> verbosity = new Option<>("verbosity", Verbosity.NORMAL, new EnumParser<>(Verbosity.class, "verbosity"))
+			.setter(SkriptLogger::setVerbosity);
 	
 	public final static Option<EventPriority> defaultEventPriority = new Option<EventPriority>("plugin priority", EventPriority.NORMAL, new Converter<String, EventPriority>() {
 		@Override
@@ -300,15 +295,8 @@ public abstract class SkriptConfig {
 				
 			});
 
-	public final static Option<Boolean> asyncLoaderEnabled = new Option<Boolean>("asynchronous script loading", false)
-			.setter(new Setter<Boolean>() {
-
-				@Override
-				public void set(Boolean t) {
-					ScriptLoader.loadAsync = t;
-				}
-				
-			})
+	public final static Option<Integer> scriptLoaderThreadSize = new Option<>("script loader thread size", 0)
+			.setter(ScriptLoader::setAsyncLoaderSize)
 			.optional(true);
 	
 	public final static Option<Boolean> allowUnsafePlatforms = new Option<Boolean>("allow unsafe platforms", false)

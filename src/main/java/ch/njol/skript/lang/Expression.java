@@ -18,7 +18,6 @@
  */
 package ch.njol.skript.lang;
 
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
@@ -28,7 +27,6 @@ import org.bukkit.event.Event;
 import org.bukkit.inventory.ItemStack;
 import org.eclipse.jdt.annotation.Nullable;
 
-import ch.njol.skript.ScriptLoader;
 import ch.njol.skript.Skript;
 import ch.njol.skript.aliases.ItemType;
 import ch.njol.skript.classes.Changer;
@@ -184,10 +182,10 @@ public interface Expression<T> extends SyntaxElement, Debuggable {
 	 * 
 	 * @param time -1 for past or 1 for future. 0 is never passed to this method as it represents the default state.
 	 * @return Whether this expression has distinct time states, e.g. a player never changes but a block can. This should be sensitive for the event (using
-	 *         {@link ScriptLoader#isCurrentEvent(Class)}).
+	 *         {@link ch.njol.skript.lang.parser.ParserInstance#isCurrentEvent(Class)}).
 	 * @see SimpleExpression#setTime(int, Class, Expression...)
 	 * @see SimpleExpression#setTime(int, Expression, Class...)
-	 * @see ScriptLoader#isCurrentEvent(Class...)
+	 * @see ch.njol.skript.lang.parser.ParserInstance#isCurrentEvent(Class...)
 	 */
 	public boolean setTime(int time);
 	

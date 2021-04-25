@@ -31,7 +31,6 @@ import org.bukkit.ChatColor;
 import org.bukkit.event.Event;
 import org.eclipse.jdt.annotation.Nullable;
 
-import ch.njol.skript.ScriptLoader;
 import ch.njol.skript.Skript;
 import ch.njol.skript.SkriptConfig;
 import ch.njol.skript.classes.Changer.ChangeMode;
@@ -40,6 +39,7 @@ import ch.njol.skript.classes.Parser;
 import ch.njol.skript.config.Config;
 import ch.njol.skript.expressions.ExprColoured;
 import ch.njol.skript.lang.SkriptParser.ParseResult;
+import ch.njol.skript.lang.parser.ParserInstance;
 import ch.njol.skript.lang.util.SimpleExpression;
 import ch.njol.skript.log.BlockingLogHandler;
 import ch.njol.skript.log.RetainingLogHandler;
@@ -292,10 +292,12 @@ public class VariableString implements Expression<String> {
 	}
 	
 	private static void checkVariableConflicts(final String name, final StringMode mode, final @Nullable Iterable<Object> string) {
+		ParserInstance parserInstance = ParserInstance.get();
+		
 		if (mode != StringMode.VARIABLE_NAME || variableNames.containsKey(name))
 			return;
 		if (name.startsWith("%")) {// inside the if to only print this message once per variable
-			final Config script = ScriptLoader.currentScript;
+			final Config script = parserInstance.getCurrentScript();
 			if (script != null) {
 				if (disableVariableStartingWithExpressionWarnings && !ScriptOptions.getInstance().suppressesWarning(script.getFile(), "start expression")) {
 					Skript.warning("Starting a variable's name with an expression is discouraged ({" + name + "}). You could prefix it with the script's name: {" + StringUtils.substring(script.getFileName(), 0, -3) + "." + name + "}");
@@ -325,7 +327,7 @@ public class VariableString implements Expression<String> {
 			pattern = Pattern.compile(Pattern.quote(name));
 		}
 		if (!SkriptConfig.disableVariableConflictWarnings.value()) {
-			Config cs = ScriptLoader.currentScript; //Eclipse's nullness forced me to do this
+			Config cs = parserInstance.getCurrentScript(); //Eclipse's nullness forced me to do this
 			if (cs != null) {
 				if (!ScriptOptions.getInstance().suppressesWarning(cs.getFile(), "conflict")) {
 					for (final Entry<String, Pattern> e : variableNames.entrySet()) {
@@ -616,9 +618,9 @@ public class VariableString implements Expression<String> {
 	public VariableString setMode(final StringMode mode) {
 		if (this.mode == mode || isSimple)
 			return this;
-		final BlockingLogHandler h = SkriptLogger.startLogHandler(new BlockingLogHandler());
+		BlockingLogHandler h = new BlockingLogHandler().start();
 		try {
-			final VariableString vs = newInstance(orig, mode);
+			VariableString vs = newInstance(orig, mode);
 			if (vs == null) {
 				assert false : this + "; " + mode;
 				return this;
