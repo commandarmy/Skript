@@ -542,9 +542,7 @@ public class ScriptLoader {
 					Language.setUseLocal(true);
 			})
 			.thenApply(unused -> {
-				// Just to be sure, register these on main thread
-				Bukkit.getScheduler().scheduleSyncDelayedTask(Skript.getInstance(),
-					SkriptEventHandler::registerBukkitEvents);
+				SkriptEventHandler.registerBukkitEvents();
 				
 				// After we've loaded everything, refresh commands their names changed
 				if (syncCommands.get()) {
