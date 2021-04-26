@@ -388,19 +388,21 @@ public class SkriptCommand implements CommandExecutor {
 				}
 				
 				Config config = ScriptLoader.loadStructure(script);
-				ScriptLoader.runScriptsLoad(Collections.singletonList(config), logHandler)
-					.thenAccept(scriptInfo ->
-						// Code should run on server thread
-						Bukkit.getScheduler().scheduleSyncDelayedTask(Skript.getInstance(), () -> {
-							Bukkit.getPluginManager().callEvent(new SkriptTestEvent()); // Run it
-							// ScriptLoader.disableScripts(); // Clean state for next test
-							
-							// Get results and show them
-							String[] lines = TestTracker.collectResults().createReport().split("\n");
-							for (String line : lines) {
-								Skript.info(sender, line);
-							}
-					})); // Load test
+				if (config != null) {
+					ScriptLoader.runScriptsLoad(Collections.singletonList(config), logHandler)
+						.thenAccept(scriptInfo ->
+							// Code should run on server thread
+							Bukkit.getScheduler().scheduleSyncDelayedTask(Skript.getInstance(), () -> {
+								Bukkit.getPluginManager().callEvent(new SkriptTestEvent()); // Run it
+								// ScriptLoader.disableScripts(); // Clean state for next test
+								
+								// Get results and show them
+								String[] lines = TestTracker.collectResults().createReport().split("\n");
+								for (String line : lines) {
+									Skript.info(sender, line);
+								}
+							}));
+				}
 			}
 		} catch (Exception e) {
 			Skript.exception(e, "Exception occurred in Skript's main command", "Used command: /" + label + " " + StringUtils.join(args, " "));
