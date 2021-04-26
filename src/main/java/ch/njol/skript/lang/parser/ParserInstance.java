@@ -143,7 +143,7 @@ public class ParserInstance {
 	
 	public void setCurrentScript(@Nullable Config currentScript) {
 		this.currentScript = currentScript;
-		dataMap.values().forEach(data -> data.onCurrentScriptChange(currentScript));
+		getDataInstances().forEach(data -> data.onCurrentScriptChange(currentScript));
 	}
 	
 	public void setCurrentEventName(@Nullable String currentEventName) {
@@ -152,7 +152,7 @@ public class ParserInstance {
 	
 	public void setCurrentEvents(@Nullable Class<? extends Event>[] currentEvents) {
 		this.currentEvents = currentEvents;
-		dataMap.values().forEach(data -> data.onCurrentEventsChange(currentEvents));
+		getDataInstances().forEach(data -> data.onCurrentEventsChange(currentEvents));
 	}
 	
 	public void setCurrentSkriptEvent(@Nullable SkriptEvent currentSkriptEvent) {
@@ -271,6 +271,18 @@ public class ParserInstance {
 		}
 		assert false;
 		return null;
+	}
+	
+	private List<? extends Data> getDataInstances() {
+		// List<? extends Data> gave errors, so using this instead
+		List<Data> dataList = new ArrayList<>();
+		for (Class<? extends Data> dataClass : dataRegister.keySet()) {
+			// This will include all registered data, even if not already initiated
+			Data data = getData(dataClass);
+			if (data != null)
+				dataList.add(data);
+		}
+		return dataList;
 	}
 	
 }
