@@ -106,7 +106,7 @@ public abstract class SkriptLogger {
 				i++;
 			LOGGER.severe("[Skript] " + i + " log handler" + (i == 1 ? " was" : "s were") + " not stopped properly!" +
 				" (at " + getCaller() + ") " +
-				"[if you're a server admin and you see this message please file a bug report at https://github.com/bensku/skript/issues if there is not already one]");
+				"[if you're a server admin and you see this message please file a bug report at https://github.com/SkriptLang/skript/issues if there is not already one]");
 		}
 	}
 	

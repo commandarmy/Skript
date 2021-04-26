@@ -304,9 +304,9 @@ public class ScriptLoader {
 	 * Sets the amount of async loaders, by updating
 	 * {@link #asyncLoaderSize} and {@link #loaderThreads}.
 	 * <br>
-	 * If {@code size <= 0}, async and parallel loading is disabled.
+	 * If {@code size <= 0}, async and parallel loading are disabled.
 	 * <br>
-	 * If {@code size == 1}, async loading is enabled and parallel loading is enabled.
+	 * If {@code size == 1}, async loading is enabled but parallel loading is disabled.
 	 * <br>
 	 * If {@code size >= 2}, async and parallel loading are enabled.
 	 *
