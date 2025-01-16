@@ -1,34 +1,4 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.doc;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import org.eclipse.jdt.annotation.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.classes.ClassInfo;
@@ -41,21 +11,64 @@ import ch.njol.skript.lang.function.JavaFunction;
 import ch.njol.skript.lang.function.Parameter;
 import ch.njol.skript.registrations.Classes;
 import ch.njol.skript.util.Utils;
-import ch.njol.util.Callback;
 import ch.njol.util.NonNullPair;
 import ch.njol.util.StringUtils;
 import ch.njol.util.coll.CollectionUtils;
 import ch.njol.util.coll.iterator.IteratorIterable;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * TODO list special expressions for events and event values
  * TODO compare doc in code with changed one of the webserver and warn about differences?
  *
- * @author Peter Güttinger
  */
 @SuppressFBWarnings("ES_COMPARING_STRINGS_WITH_EQ")
 public class Documentation {
+
+	private static final Pattern CP_PARSE_MARKS_PATTERN = Pattern.compile("(?<=[(|])[-0-9]+?¦");
+	private static final Pattern CP_EMPTY_PARSE_MARKS_PATTERN = Pattern.compile("\\(\\)");
+	private static final Pattern CP_PARSE_TAGS_PATTERN = Pattern.compile("(?<=[(|\\[ ])[-a-zA-Z0-9!$#%^&*_+~=\"'<>?,.]*?:");
+	private static final Pattern CP_EXTRA_OPTIONAL_PATTERN = Pattern.compile("\\[\\(((\\w+? ?)+)\\)]");
+	private static final File DOCS_TEMPLATE_DIRECTORY = new File(Skript.getInstance().getDataFolder(), "docs/templates");
+	private static final File DOCS_OUTPUT_DIRECTORY = new File(Skript.getInstance().getDataFolder(), "docs");
+
+	/**
+	 * Force register hooks even if their plugins are not present in the server
+	 */
+	public static final boolean FORCE_HOOKS_SYSTEM_PROPERTY = "true".equals(System.getProperty("skript.forceregisterhooks"));
+
+	public static boolean isDocsTemplateFound() {
+		return getDocsTemplateDirectory().isDirectory();
+	}
+
+	/**
+	 * Checks if server java args have 'skript.forceregisterhooks' property set to true and docs template folder is found
+	 */
+	public static boolean canGenerateUnsafeDocs() {
+		return isDocsTemplateFound() && FORCE_HOOKS_SYSTEM_PROPERTY;
+	}
+
+	public static File getDocsTemplateDirectory() {
+		String environmentTemplateDir = System.getenv("SKRIPT_DOCS_TEMPLATE_DIR");
+		return environmentTemplateDir == null ? DOCS_TEMPLATE_DIRECTORY : new File(environmentTemplateDir);
+	}
+
+	public static File getDocsOutputDirectory() {
+		String environmentOutputDir = System.getenv("SKRIPT_DOCS_OUTPUT_DIR");
+		return environmentOutputDir == null ? DOCS_OUTPUT_DIRECTORY : new File(environmentOutputDir);
+	}
 
 	public static void generate() {
 		if (!generate)
@@ -165,14 +178,16 @@ public class Documentation {
 		return cleanPatterns(patterns, true);
 	}
 
-	protected static String cleanPatterns(final String patterns, boolean escapeHTML) {
+	protected static String cleanPatterns(String patterns, boolean escapeHTML) {
 
-		String cleanedPatterns =
-				(escapeHTML ? escapeHTML(patterns) : patterns) // Escape HTML if escapeHTML == true
-				.replaceAll("(?<=[(|])[-0-9]+?¦", "") // Remove marks
-				.replace("()", ""); // Remove empty mark setting groups (mark¦)
+		String cleanedPatterns = escapeHTML ? escapeHTML(patterns) : patterns;
 
-		Callback<String, Matcher> callback = m -> { // Replace optional parentheses with optional brackets
+		cleanedPatterns = CP_PARSE_MARKS_PATTERN.matcher(cleanedPatterns).replaceAll(""); // Remove marks
+		cleanedPatterns = CP_EMPTY_PARSE_MARKS_PATTERN.matcher(cleanedPatterns).replaceAll(""); // Remove empty mark setting groups (mark¦)
+		cleanedPatterns = CP_PARSE_TAGS_PATTERN.matcher(cleanedPatterns).replaceAll(""); // Remove new parse tags, see https://regex101.com/r/mTebpn/1
+		cleanedPatterns = CP_EXTRA_OPTIONAL_PATTERN.matcher(cleanedPatterns).replaceAll("[$1]"); // Remove unnecessary parentheses such as [(script)]
+
+		Function<Matcher, String> callback = m -> { // Replace optional parentheses with optional brackets
 			String group = m.group();
 
 			boolean startToEnd = group.contains("(|"); // Due to regex limitation we search from the beginning to the end but if it has '|)' we will begin from the opposite direction
@@ -221,7 +236,7 @@ public class Documentation {
 		cleanedPatterns = cleanedPatterns.replaceAll("\\(([^()]+?)\\|\\)", "[($1)]"); // Matches optional syntaxes that doesn't have nested parentheses
 		cleanedPatterns = cleanedPatterns.replaceAll("\\(\\|([^()]+?)\\)", "[($1)]");
 
-		cleanedPatterns = StringUtils.replaceAll(cleanedPatterns, "\\((.+)\\|\\)", callback); // Matches complex optional parentheses at has nested parentheses
+		cleanedPatterns = StringUtils.replaceAll(cleanedPatterns, "\\((.+)\\|\\)", callback); // Matches complex optional parentheses that has nested parentheses
 		assert cleanedPatterns != null;
 		cleanedPatterns = StringUtils.replaceAll(cleanedPatterns, "\\((.+?)\\|\\)", callback);
 		assert cleanedPatterns != null;
@@ -231,68 +246,66 @@ public class Documentation {
 		assert cleanedPatterns != null;
 
 		final String s = StringUtils.replaceAll(cleanedPatterns, "(?<!\\\\)%(.+?)(?<!\\\\)%", // Convert %+?% (aka types) inside patterns to links
-			new Callback<String, Matcher>() {
-				@Override
-				public String run(final Matcher m) {
-					String s = m.group(1);
-					if (s.startsWith("-"))
-						s = s.substring(1);
-					String flag = "";
-					if (s.startsWith("*") || s.startsWith("~")) {
-						flag = s.substring(0, 1);
-						s = s.substring(1);
-					}
-					final int a = s.indexOf("@");
-					if (a != -1)
-						s = s.substring(0, a);
-					final StringBuilder b = new StringBuilder("%");
-					b.append(flag);
-					boolean first = true;
-					for (final String c : s.split("/")) {
-						assert c != null;
-						if (!first)
-							b.append("/");
-						first = false;
-						final NonNullPair<String, Boolean> p = Utils.getEnglishPlural(c);
-						final ClassInfo<?> ci = Classes.getClassInfoNoError(p.getFirst());
-						if (ci != null && ci.getDocName() != null && ci.getDocName() != ClassInfo.NO_DOC) {
-							b.append("<a href='./classes.html#").append(p.getFirst()).append("'>").append(ci.getName().toString(p.getSecond())).append("</a>");
-						} else {
-							b.append(c);
-							if (ci != null && !ci.getDocName().equals(ClassInfo.NO_DOC))
-								Skript.warning("Used class " + p.getFirst() + " has no docName/name defined");
-						}
-					}
-					return "" + b.append("%").toString();
+			m -> {
+				String s1 = m.group(1);
+				if (s1.startsWith("-"))
+					s1 = s1.substring(1);
+				String flag = "";
+				if (s1.startsWith("*") || s1.startsWith("~")) {
+					flag = s1.substring(0, 1);
+					s1 = s1.substring(1);
 				}
+				final int a = s1.indexOf("@");
+				if (a != -1)
+					s1 = s1.substring(0, a);
+				final StringBuilder b = new StringBuilder("%");
+				b.append(flag);
+				boolean first = true;
+				for (final String c : s1.split("/")) {
+					assert c != null;
+					if (!first)
+						b.append("/");
+					first = false;
+					final NonNullPair<String, Boolean> p = Utils.getEnglishPlural(c);
+					final ClassInfo<?> ci = Classes.getClassInfoNoError(p.getFirst());
+					if (ci != null && ci.hasDocs()) { // equals method throws null error when doc name is null
+						b.append("<a href='./classes.html#").append(p.getFirst()).append("'>").append(ci.getName().toString(p.getSecond())).append("</a>");
+					} else {
+						b.append(c);
+						if (ci != null && ci.hasDocs())
+							Skript.warning("Used class " + p.getFirst() + " has no docName/name defined");
+					}
+				}
+				return b.append("%").toString();
 			});
 		assert s != null : patterns;
 		return s;
 	}
 
 	private static void insertSyntaxElement(final PrintWriter pw, final SyntaxElementInfo<?> info, final String type) {
-		if (info.c.getAnnotation(NoDoc.class) != null)
+		Class<?> elementClass = info.getElementClass();
+		if (elementClass.getAnnotation(NoDoc.class) != null)
 			return;
-		if (info.c.getAnnotation(Name.class) == null || info.c.getAnnotation(Description.class) == null || info.c.getAnnotation(Examples.class) == null || info.c.getAnnotation(Since.class) == null) {
-			Skript.warning("" + info.c.getSimpleName() + " is missing information");
+		if (elementClass.getAnnotation(Name.class) == null || elementClass.getAnnotation(Description.class) == null || elementClass.getAnnotation(Examples.class) == null || elementClass.getAnnotation(Since.class) == null) {
+			Skript.warning("" + elementClass.getSimpleName() + " is missing information");
 			return;
 		}
-		final String desc = validateHTML(StringUtils.join(info.c.getAnnotation(Description.class).value(), "<br/>"), type + "s");
-		final String since = validateHTML(info.c.getAnnotation(Since.class).value(), type + "s");
+		final String desc = validateHTML(StringUtils.join(elementClass.getAnnotation(Description.class).value(), "<br/>"), type + "s");
+		final String since = validateHTML(StringUtils.join(elementClass.getAnnotation(Since.class).value(), "<br/>"), type + "s");
 		if (desc == null || since == null) {
-			Skript.warning("" + info.c.getSimpleName() + "'s description or 'since' is invalid");
+			Skript.warning("" + elementClass.getSimpleName() + "'s description or 'since' is invalid");
 			return;
 		}
-		final String patterns = cleanPatterns(StringUtils.join(info.patterns, "\n", 0, info.c == CondCompare.class ? 8 : info.patterns.length));
+		final String patterns = cleanPatterns(StringUtils.join(info.patterns, "\n", 0, elementClass == CondCompare.class ? 8 : info.patterns.length));
 		insertOnDuplicateKeyUpdate(pw, "syntax_elements",
 				"id, name, type, patterns, description, examples, since",
 				"patterns = TRIM(LEADING '\n' FROM CONCAT(patterns, '\n', '" + escapeSQL(patterns) + "'))",
-				escapeHTML("" + info.c.getSimpleName()),
-				escapeHTML(info.c.getAnnotation(Name.class).value()),
+				escapeHTML("" + elementClass.getSimpleName()),
+				escapeHTML(elementClass.getAnnotation(Name.class).value()),
 				type,
 				patterns,
 				desc,
-				escapeHTML(StringUtils.join(info.c.getAnnotation(Examples.class).value(), "\n")),
+				escapeHTML(StringUtils.join(elementClass.getAnnotation(Examples.class).value(), "\n")),
 				since);
 	}
 
@@ -300,7 +313,7 @@ public class Documentation {
 		if (info.getDescription() == SkriptEventInfo.NO_DOC)
 			return;
 		if (info.getDescription() == null || info.getExamples() == null || info.getSince() == null) {
-			Skript.warning("" + info.getName() + " (" + info.c.getSimpleName() + ") is missing information");
+			Skript.warning("" + info.getName() + " (" + info.getElementClass().getSimpleName() + ") is missing information");
 			return;
 		}
 		for (final SkriptEventInfo<?> i : Skript.getEvents()) {
@@ -312,7 +325,7 @@ public class Documentation {
 		final String desc = validateHTML(StringUtils.join(info.getDescription(), "<br/>"), "events");
 		final String since = validateHTML(info.getSince(), "events");
 		if (desc == null || since == null) {
-			Skript.warning("description or 'since' of " + info.getName() + " (" + info.c.getSimpleName() + ") is invalid");
+			Skript.warning("description or 'since' of " + info.getName() + " (" + info.getElementClass().getSimpleName() + ") is invalid");
 			return;
 		}
 		final String patterns = cleanPatterns(info.getName().startsWith("On ") ? "[on] " + StringUtils.join(info.patterns, "\n[on] ") : StringUtils.join(info.patterns, "\n"));
@@ -425,7 +438,7 @@ public class Documentation {
 							continue linkLoop;
 					}
 				} else if (s[0].equals("../functions/")) {
-					if (Functions.getFunction("" + s[1]) != null)
+					if (Functions.getGlobalFunction("" + s[1]) != null)
 						continue;
 				} else {
 					final int i = CollectionUtils.indexOf(urls, s[0].substring("../".length(), s[0].length() - 1));
@@ -442,16 +455,23 @@ public class Documentation {
 		return html;
 	}
 
-	private static String escapeSQL(final String s) {
-		return "" + s.replace("'", "\\'").replace("\"", "\\\"");
+	private static String escapeSQL(String value) {
+		return "" + value.replace("'", "\\'").replace("\"", "\\\"");
 	}
 
-	public static String escapeHTML(final @Nullable String s) {
-		if (s == null) {
+	public static String escapeHTML(@Nullable String value) {
+		if (value == null) {
 			assert false;
 			return "";
 		}
-		return "" + s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
+		return "" + value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+	}
+
+	public static String[] escapeHTML(@Nullable String[] values) {
+		for (int i = 0; i < values.length; i++) {
+			values[i] = escapeHTML(values[i]);
+		}
+		return values;
 	}
 
 }

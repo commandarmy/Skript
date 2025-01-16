@@ -1,27 +1,9 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
 
 import org.bukkit.Bukkit;
 import org.bukkit.event.Event;
 import org.bukkit.util.CachedServerIcon;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import com.destroystokyo.paper.event.server.PaperServerListPingEvent;
 import ch.njol.skript.Skript;
@@ -77,10 +59,13 @@ public class ExprServerIcon extends SimpleExpression<CachedServerIcon> {
 	@Nullable
 	public CachedServerIcon[] get(Event e) {
 		CachedServerIcon icon = null;
-		if ((isServerPingEvent && !isDefault) && PAPER_EVENT_EXISTS)
+		if ((isServerPingEvent && !isDefault) && PAPER_EVENT_EXISTS) {
+			if (!(e instanceof PaperServerListPingEvent))
+				return null;
 			icon = ((PaperServerListPingEvent) e).getServerIcon();
-		else
+		} else {
 			icon = Bukkit.getServerIcon();
+		}
 		if (icon == null || icon.getData() == null)
 			return null;
 		return CollectionUtils.array(icon);
@@ -103,6 +88,9 @@ public class ExprServerIcon extends SimpleExpression<CachedServerIcon> {
 	@SuppressWarnings("null")
 	@Override
 	public void change(Event e, @Nullable Object[] delta, ChangeMode mode) {
+		if (!(e instanceof PaperServerListPingEvent))
+			return;
+
 		PaperServerListPingEvent event = (PaperServerListPingEvent) e;
 		switch (mode) {
 			case SET:

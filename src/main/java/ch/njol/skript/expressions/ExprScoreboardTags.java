@@ -1,21 +1,3 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
 
 import java.util.Set;
@@ -23,7 +5,7 @@ import java.util.stream.Stream;
 
 import org.bukkit.entity.Entity;
 import org.bukkit.event.Event;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.classes.Changer.ChangeMode;
@@ -41,7 +23,7 @@ import ch.njol.util.coll.CollectionUtils;
 @Name("Scoreboard Tags")
 @Description({"Scoreboard tags are simple list of texts stored directly in the data of an <a href='classes.html#entity'>entity</a>.",
 		"So this is a Minecraft related thing, not Bukkit, so the tags will not get removed when the server stops. " +
-		"You can visit <a href='https://minecraft.gamepedia.com/Scoreboard#Tags'>visit Minecraft Wiki</a> for more info.",
+		"You can visit <a href='https://minecraft.wiki/w/Scoreboard#Tags'>visit Minecraft Wiki</a> for more info.",
 		"This is changeable and valid for any type of entity. " +
 		"Also you can use use the <a href='conditions.html#CondHasScoreboardTag'>Has Scoreboard Tag</a> condition to check whether an entity has the given tags.",
 		"",
@@ -58,10 +40,9 @@ import ch.njol.util.coll.CollectionUtils;
 public class ExprScoreboardTags extends SimpleExpression<String> {
 
 	static {
-		if (Skript.isRunningMinecraft(1, 11))
-			Skript.registerExpression(ExprScoreboardTags.class, String.class, ExpressionType.PROPERTY,
-					"[(all [[of] the]|the)] scoreboard tags of %entities%",
-					"%entities%'[s] scoreboard tags");
+		Skript.registerExpression(ExprScoreboardTags.class, String.class, ExpressionType.PROPERTY,
+			"[(all [[of] the]|the)] scoreboard tags of %entities%",
+			"%entities%'[s] scoreboard tags");
 	}
 
 	@SuppressWarnings("null")

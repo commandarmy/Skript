@@ -1,26 +1,8 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
 
 import org.apache.commons.lang.WordUtils;
 import org.bukkit.event.Event;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.doc.Description;
@@ -153,22 +135,28 @@ public class ExprStringCase extends SimpleExpression<String> {
 	}
 
 	@Override
-	public String toString(@Nullable Event e, boolean debug) {
+	public String toString(@Nullable Event event, boolean debug) {
+		String mode = "";
 		switch (type) {
 			case 0: // Basic Case Change 
-				return (casemode == 1) ? "uppercase" : "lowercase";
+				mode = (casemode == 1) ? "uppercase" : "lowercase";
+				break;
 			case 1: // Proper Case 
-				return ((casemode == 3) ? "strict" : "lenient") + " proper case";
+				mode = ((casemode == 3) ? "strict" : "lenient") + " proper case";
+				break;
 			case 2: // Camel Case 
-				return ((casemode == 3) ? "strict" : "lenient") + " camel case";
+				mode = ((casemode == 3) ? "strict" : "lenient") + " camel case";
+				break;
 			case 3: // Pascal Case 
-				return ((casemode == 3) ? "strict" : "lenient") + " pascal case";
+				mode = ((casemode == 3) ? "strict" : "lenient") + " pascal case";
+				break;
 			case 4: // Snake Case 
-				return ((casemode == 0) ? "" : ((casemode == 1)) ? "upper " : "lower ") + "snake case";
+				mode = ((casemode == 0) ? "" : ((casemode == 1)) ? "upper " : "lower ") + "snake case";
+				break;
 			case 5: // Kebab Case 
-				return ((casemode == 0) ? "" : ((casemode == 1)) ? "upper " : "lower ") + "kebab case";
+				mode = ((casemode == 0) ? "" : ((casemode == 1)) ? "upper " : "lower ") + "kebab case";
 		}
-		return ""; // Shouldn't reach here anyways 
+		return mode + " " + expr.toString(event, debug);
 	}
 	
 	@SuppressWarnings("null")

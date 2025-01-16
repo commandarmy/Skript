@@ -1,28 +1,11 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
 
+import ch.njol.skript.Skript;
+import ch.njol.skript.lang.ExpressionType;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.event.Event;
 import org.bukkit.util.Vector;
-import org.eclipse.jdt.annotation.Nullable;
 
 import ch.njol.skript.doc.Description;
 import ch.njol.skript.doc.Examples;
@@ -33,6 +16,7 @@ import ch.njol.skript.lang.SkriptParser.ParseResult;
 import ch.njol.skript.lang.util.SimpleExpression;
 import ch.njol.util.Kleenean;
 import ch.njol.util.coll.CollectionUtils;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * @author bi0qaw
@@ -46,11 +30,12 @@ import ch.njol.util.coll.CollectionUtils;
 public class ExprLocationFromVector extends SimpleExpression<Location> {
 
 	static {
-		// TODO fix slowdowns and enable again, for now nuked for greater good
-//		Skript.registerExpression(ExprLocationFromVector.class, Location.class, ExpressionType.SIMPLE,
-//				"%vector% [to location] [in] %world%", "location (from|of) %vector% [(from|in)] %world%",
-//				"%vector% [to location] [in] %world% with yaw %number% and pitch %number%",
-//				"location (from|of) %vector% [(in|from)] %world% with yaw %number% and pitch %number%");
+		Skript.registerExpression(ExprLocationFromVector.class, Location.class, ExpressionType.COMBINED,
+				"%vector% to location in %world%",
+				"location (from|of) %vector% in %world%",
+				"%vector% [to location] in %world% with yaw %number% and pitch %number%",
+				"location (from|of) %vector% in %world% with yaw %number% and pitch %number%"
+		);
 	}
 
 	@SuppressWarnings("null")
@@ -60,17 +45,17 @@ public class ExprLocationFromVector extends SimpleExpression<Location> {
 	private Expression<World> world;
 
 	@SuppressWarnings("null")
-	private Expression<Number> yaw, pitch;
-	private boolean yawpitch;
+	private @Nullable Expression<Number> yaw, pitch;
+	private boolean hasDirection;
 
 	@Override
 	@SuppressWarnings({"unchecked", "null"})
 	public boolean init(Expression<?>[] exprs, int matchedPattern, Kleenean isDelayed, ParseResult parseResult) {
 		if (exprs.length > 3)
-			yawpitch = true;
+			hasDirection = true;
 		vector = (Expression<Vector>) exprs[0];
 		world = (Expression<World>) exprs[1];
-		if (yawpitch) {
+		if (hasDirection) {
 			yaw = (Expression<Number>) exprs[2];
 			pitch = (Expression<Number>) exprs[3];
 		}
@@ -79,17 +64,21 @@ public class ExprLocationFromVector extends SimpleExpression<Location> {
 
 	@SuppressWarnings("null")
 	@Override
-	protected Location[] get(Event e) {
-		Vector v = vector.getSingle(e);
-		World w = world.getSingle(e);
-		Number y = yaw != null ? yaw.getSingle(e) : null;
-		Number p = pitch != null ? pitch.getSingle(e) : null;
-		if (v == null || w == null)
+	protected Location[] get(Event event) {
+		Vector vector = this.vector.getSingle(event);
+		World world = this.world.getSingle(event);
+		if (vector == null || world == null)
 			return null;
-		if (y == null || p == null)
-			return CollectionUtils.array(v.toLocation(w));
-		else
-			return CollectionUtils.array(v.toLocation(w, y.floatValue(), p.floatValue()));
+		direction:
+		if (hasDirection) {
+			assert yaw != null && pitch != null;
+			Number yaw = this.yaw.getSingle(event);
+			Number pitch = this.pitch.getSingle(event);
+			if (yaw == null && pitch == null)
+				break direction;
+			return CollectionUtils.array(vector.toLocation(world, yaw == null ? 0 : yaw.floatValue(), pitch == null ? 0 : pitch.floatValue()));
+		}
+		return CollectionUtils.array(vector.toLocation(world));
 	}
 
 	@Override
@@ -103,10 +92,10 @@ public class ExprLocationFromVector extends SimpleExpression<Location> {
 	}
 
 	@Override
-	public String toString(@Nullable Event e, boolean debug) {
-		if (yawpitch)
-			return "location from " + vector.toString(e, debug) + " with yaw " + yaw.toString() + " and pitch " + pitch.toString(e, debug);
-		return "location from " + vector.toString(e, debug);
+	public String toString(@Nullable Event event, boolean debug) {
+		if (hasDirection)
+			return "location of " + vector.toString(event, debug) + " in " + world.toString(event, debug) + " with yaw " + yaw.toString(event, debug) + " and pitch " + pitch.toString(event, debug);
+		return "location of " + vector.toString(event, debug) + " in " + world.toString(event, debug);
 	}
 
 }

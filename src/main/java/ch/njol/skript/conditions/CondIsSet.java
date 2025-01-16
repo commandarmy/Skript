@@ -1,25 +1,9 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.conditions;
 
+import ch.njol.skript.lang.VerboseAssert;
+import ch.njol.skript.localization.Language;
 import org.bukkit.event.Event;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.doc.Description;
@@ -42,7 +26,7 @@ import ch.njol.util.Kleenean;
 		"	projectile exists",
 		"	broadcast \"%attacker% used a %projectile% to attack %victim%!\""})
 @Since("1.2")
-public class CondIsSet extends Condition {
+public class CondIsSet extends Condition implements VerboseAssert {
 	static {
 		Skript.registerCondition(CondIsSet.class,
 				"%~objects% (exist[s]|(is|are) set)",
@@ -79,7 +63,18 @@ public class CondIsSet extends Condition {
 	public boolean check(final Event e) {
 		return check(expr, e);
 	}
-	
+
+	@Override
+	public String getExpectedMessage(Event event) {
+		return isNegated() ? Language.get("none") : "a value";
+	}
+
+	@Override
+	public String getReceivedMessage(Event event) {
+		// TODO: may need to make this enumerate each value: "a, b, <none>, and d"
+		return VerboseAssert.getExpressionValue(expr,event);
+	}
+
 	@Override
 	public String toString(final @Nullable Event e, final boolean debug) {
 		return expr.toString(e, debug) + (isNegated() ? " isn't" : " is") + " set";

@@ -1,42 +1,25 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.util.visual;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.lang.Expression;
 import ch.njol.skript.lang.SkriptParser.ParseResult;
 import ch.njol.skript.lang.SyntaxElement;
+import ch.njol.skript.lang.util.ContextlessEvent;
 import ch.njol.util.Kleenean;
 import ch.njol.yggdrasil.YggdrasilSerializable;
+import org.bukkit.Bukkit;
 import org.bukkit.Effect;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
 public class VisualEffect implements SyntaxElement, YggdrasilSerializable {
-
-	private static final boolean HAS_REDSTONE_DATA = Skript.classExists("org.bukkit.Particle$DustOptions");
 
 	private VisualEffectType type;
 
@@ -46,14 +29,29 @@ public class VisualEffect implements SyntaxElement, YggdrasilSerializable {
 	private float dX, dY, dZ = 0f;
 
 	public VisualEffect() {}
-	
+
 	@SuppressWarnings({"null", "ConstantConditions"})
 	@Override
 	public boolean init(Expression<?>[] exprs, int matchedPattern, Kleenean isDelayed, ParseResult parseResult) {
 		type = VisualEffects.get(matchedPattern);
 
-		if (exprs.length > 4 && exprs[0] != null) {
-			data = exprs[0].getSingle(null);
+		if (exprs.length > 4) {
+			int exprCount = exprs.length - 4; // some effects might have multiple expressions
+			ContextlessEvent event = ContextlessEvent.get();
+			if (exprCount == 1) {
+				data = exprs[0] != null ? exprs[0].getSingle(event) : null;
+			} else { // provide an array of expression values
+				Object[] dataArray = new Object[exprCount];
+				for (int i = 0; i < exprCount; i++)
+					dataArray[i] = exprs[i] != null ? exprs[i].getSingle(event) : null;
+				data = dataArray;
+			}
+		}
+
+		if (parseResult.hasTag("barrierbm")) { // barrier compatibility
+			data = Bukkit.createBlockData(Material.BARRIER);
+		} else if (parseResult.hasTag("lightbm")) { // light compatibility
+			data = Bukkit.createBlockData(Material.LIGHT);
 		}
 
 		if ((parseResult.mark & 1) != 0) {
@@ -100,7 +98,7 @@ public class VisualEffect implements SyntaxElement, YggdrasilSerializable {
 			}
 
 			// Some particles use offset as RGB color codes
-			if (type.isColorable() && (!HAS_REDSTONE_DATA || particle != Particle.REDSTONE) && data instanceof ParticleOption) {
+			if (type.isColorable() && data instanceof ParticleOption) {
 				ParticleOption option = ((ParticleOption) data);
 				dX = option.getRed();
 				dY = option.getGreen();
@@ -161,6 +159,11 @@ public class VisualEffect implements SyntaxElement, YggdrasilSerializable {
 			return false;
 		VisualEffect that = (VisualEffect) o;
 		return type == that.type && Objects.equals(data, that.data);
+	}
+
+	@Override
+	public @NotNull String getSyntaxTypeName() {
+		return "visual effect"; // why is this a unique syntax element, it really needs to go
 	}
 	
 }

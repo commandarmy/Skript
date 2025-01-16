@@ -1,27 +1,12 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
 
+import ch.njol.skript.command.ScriptCommandEvent;
+import ch.njol.skript.lang.EventRestrictedSyntax;
+import ch.njol.util.coll.CollectionUtils;
 import org.bukkit.event.Event;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.server.ServerCommandEvent;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.doc.Description;
@@ -46,49 +31,50 @@ import ch.njol.util.Kleenean;
 		"\t\tif the command is not \"exit\":",
 		"\t\t\tmessage \"You're not allowed to use commands during the game\"",
 		"\t\t\tcancel the event"})
-@Since("2.0")
+@Since("2.0, 2.7 (support for script commands)")
 @Events("command")
-public class ExprCommand extends SimpleExpression<String> {
+public class ExprCommand extends SimpleExpression<String> implements EventRestrictedSyntax {
+
 	static {
 		Skript.registerExpression(ExprCommand.class, String.class, ExpressionType.SIMPLE,
-				"[the] (full|complete|whole) command", "[the] command [label]", "[the] arguments");
+				"[the] (full|complete|whole) command",
+				"[the] command [(label|alias)]"
+		);
 	}
-	
-	private final static int FULL = 0, LABEL = 1, ARGS = 2;
-	private int what;
+
+	private boolean fullCommand;
 	
 	@Override
-	public boolean init(final Expression<?>[] exprs, final int matchedPattern, final Kleenean isDelayed, final ParseResult parseResult) {
-		what = matchedPattern;
-		if (!getParser().isCurrentEvent(PlayerCommandPreprocessEvent.class, ServerCommandEvent.class)) {
-			if (what != ARGS) // ExprArgument has the same syntax
-				Skript.error("The 'command' expression can only be used in a command event");
-			return false;
-		}
+	public boolean init(Expression<?>[] exprs, int matchedPattern, Kleenean isDelayed, ParseResult parseResult) {
+		fullCommand = matchedPattern == 0;
 		return true;
+	}
+
+	@Override
+	public Class<? extends Event>[] supportedEvents() {
+		return CollectionUtils.array(PlayerCommandPreprocessEvent.class, ServerCommandEvent.class, ScriptCommandEvent.class);
 	}
 	
 	@Override
 	@Nullable
 	protected String[] get(final Event e) {
 		final String s;
+
 		if (e instanceof PlayerCommandPreprocessEvent) {
 			s = ((PlayerCommandPreprocessEvent) e).getMessage().substring(1).trim();
 		} else if (e instanceof ServerCommandEvent) {
 			s = ((ServerCommandEvent) e).getCommand().trim();
+		} else { // It's a script command event
+			ScriptCommandEvent event = (ScriptCommandEvent) e;
+			s = event.getCommandLabel() + " " + event.getArgsString();
+		}
+
+		if (fullCommand) {
+			return new String[]{s};
 		} else {
-			return new String[0];
+			int c = s.indexOf(' ');
+			return new String[] {c == -1 ? s : s.substring(0, c)};
 		}
-		if (what == FULL)
-			return new String[] {s};
-		final int c = s.indexOf(' ');
-		if (what == ARGS) {
-			if (c == -1)
-				return new String[0];
-			return new String[] {s.substring(c + 1).trim()};
-		}
-		assert what == LABEL;
-		return new String[] {c == -1 ? s : s.substring(0, c)};
 	}
 	
 	@Override
@@ -102,8 +88,8 @@ public class ExprCommand extends SimpleExpression<String> {
 	}
 	
 	@Override
-	public String toString(final @Nullable Event e, final boolean debug) {
-		return what == 0 ? "the full command" : what == 1 ? "the command" : "the arguments";
+	public String toString(@Nullable Event e, boolean debug) {
+		return fullCommand ? "the full command" : "the command";
 	}
-	
+
 }

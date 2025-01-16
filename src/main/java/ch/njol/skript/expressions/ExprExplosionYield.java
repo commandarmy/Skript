@@ -1,26 +1,8 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
 
 import org.bukkit.event.Event;
 import org.bukkit.event.entity.ExplosionPrimeEvent;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.classes.Changer.ChangeMode;
@@ -40,7 +22,7 @@ import ch.njol.util.coll.CollectionUtils;
 @Name("Explosion Yield")
 @Description({"The yield of the explosion in an explosion prime event. This is how big the explosion is.",
 				" When changing the yield, values less than 0 will be ignored.",
-				" Read <a href='https://minecraft.gamepedia.com/Explosion'>this wiki page</a> for more information"})
+				" Read <a href='https://minecraft.wiki/w/Explosion'>this wiki page</a> for more information"})
 @Examples({"on explosion prime:",
 		"\tset the yield of the explosion to 10"})
 @Events("explosion prime")
@@ -66,6 +48,9 @@ public class ExprExplosionYield extends SimpleExpression<Number> {
 	@Override
 	@Nullable
 	protected Number[] get(Event e) {
+		if (!(e instanceof ExplosionPrimeEvent))
+			return null;
+
 		return new Number[]{((ExplosionPrimeEvent) e).getRadius()};
 	}
 
@@ -86,7 +71,7 @@ public class ExprExplosionYield extends SimpleExpression<Number> {
 	@Override
 	public void change(final Event event, final @Nullable Object[] delta, final ChangeMode mode) {
 		float f = delta == null ? 0 : ((Number) delta[0]).floatValue();
-		if (f < 0) // Negative values will throw an error.
+		if (f < 0 || !(event instanceof ExplosionPrimeEvent)) // Negative values will throw an error.
 			return;
 		ExplosionPrimeEvent e = (ExplosionPrimeEvent) event;
 		switch (mode) {

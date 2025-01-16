@@ -1,25 +1,12 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.bukkitutil.block;
 
-import java.util.Map;
-
+import ch.njol.skript.Skript;
+import ch.njol.skript.aliases.Aliases;
+import ch.njol.skript.aliases.ItemType;
+import ch.njol.skript.aliases.MatchQuality;
+import ch.njol.skript.bukkitutil.ItemUtils;
+import ch.njol.skript.variables.Variables;
+import ch.njol.yggdrasil.Fields;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -27,19 +14,20 @@ import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.BlockSupport;
 import org.bukkit.block.data.Bisected;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.type.Bed;
+import org.bukkit.block.data.type.Snow;
 import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import ch.njol.skript.Skript;
-import ch.njol.skript.aliases.Aliases;
-import ch.njol.skript.aliases.ItemType;
-import ch.njol.skript.aliases.MatchQuality;
+import java.io.StreamCorruptedException;
+import java.util.Map;
 
 /**
  * 1.13+ block compat.
@@ -48,15 +36,26 @@ public class NewBlockCompat implements BlockCompat {
 
 	private static class NewBlockValues extends BlockValues {
 
+		static {
+			Variables.yggdrasil.registerSingleClass(NewBlockValues.class, "NewBlockValues");
+		}
+
 		Material type;
 		BlockData data;
 		boolean isDefault;
 		
 		public NewBlockValues(Material type, BlockData data, boolean isDefault) {
+			if (type != data.getMaterial())
+				throw new IllegalArgumentException("'type' does not match material of 'data'");
 			this.type = type;
 			this.data = data;
 			this.isDefault = isDefault;
 		}
+
+		/**
+		 * For Serialization - INTERNAL USAGE ONLY!!
+		 */
+		private NewBlockValues() { }
 		
 		@Override
 		public boolean isDefault() {
@@ -104,19 +103,29 @@ public class NewBlockCompat implements BlockCompat {
 				return MatchQuality.DIFFERENT;
 			}
 		}
-		
+
+		@Override
+		public Fields serialize() {
+			Fields fields = new Fields();
+			fields.putObject("data", data.getAsString());
+			fields.putPrimitive("isDefault", isDefault);
+			return fields;
+		}
+
+		@Override
+		public void deserialize(@NotNull Fields fields) throws StreamCorruptedException {
+			String data = fields.getObject("data", String.class);
+			boolean isDefault = fields.getPrimitive("isDefault", Boolean.class);
+			if (data == null)
+				throw new StreamCorruptedException("'data' is missing.");
+
+			this.data = Bukkit.createBlockData(data);
+			this.type = this.data.getMaterial();
+			this.isDefault = isDefault;
+		}
 	}
 	
 	private static class NewBlockSetter implements BlockSetter {
-		
-		private ItemType floorTorch;
-		private ItemType wallTorch;
-		
-		private ItemType specialTorchSides;
-		private ItemType specialTorchFloors;
-		
-		private boolean typesLoaded = false;
-		
 		private static final BlockFace[] CARDINAL_FACES =
 			new BlockFace[] {BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST};
 		
@@ -125,14 +134,11 @@ public class NewBlockCompat implements BlockCompat {
 
 		@Override
 		public void setBlock(Block block, Material type, @Nullable BlockValues values, int flags) {
-			if (!typesLoaded)
-				loadTypes();
-			
-			boolean rotate = (flags | ROTATE) != 0;
-			boolean rotateForce = (flags | ROTATE_FORCE) != 0;
-			boolean rotateFixType = (flags | ROTATE_FIX_TYPE) != 0;
-			boolean multipart = (flags | MULTIPART) != 0;
-			boolean applyPhysics = (flags | APPLY_PHYSICS) != 0;
+			boolean rotate = (flags & ROTATE) != 0;
+			boolean rotateForce = (flags & ROTATE_FORCE) != 0;
+			boolean rotateFixType = (flags & ROTATE_FIX_TYPE) != 0;
+			boolean multipart = (flags & MULTIPART) != 0;
+			boolean applyPhysics = (flags & APPLY_PHYSICS) != 0;
 			NewBlockValues ourValues = null;
 			if (values != null)
 				ourValues = (NewBlockValues) values;
@@ -145,31 +151,23 @@ public class NewBlockCompat implements BlockCompat {
 			 */
 			boolean placed = false;
 			if (rotate) {
-				if (floorTorch.isOfType(type) || (rotateFixType && wallTorch.isOfType(type))) {
+				if (type == Material.TORCH || (rotateFixType && type == Material.WALL_TORCH)) {
 					// If floor torch cannot be placed, try a wall torch
 					Block under = block.getRelative(0, -1, 0);
-					boolean canPlace = true;
-					if (!under.getType().isOccluding()) { // Usually cannot be placed, but there are exceptions
-						// TODO check for stairs and slabs, currently complicated since there is no 'any' alias
-						if (specialTorchFloors.isOfType(under)) {
-							canPlace = true;
-						} else {
-							canPlace = false;
-						}
-					}
+					boolean canPlace = canSupportFloorTorch(under);
 					
 					// Can't really place a floor torch, try wall one instead
 					if (!canPlace) {
 						BlockFace face = findWallTorchSide(block);
 						if (face != null) { // Found better torch spot
-							block.setType(wallTorch.getMaterial());
+							block.setType(Material.WALL_TORCH);
 							Directional data = (Directional) block.getBlockData();
 							data.setFacing(face);
 							block.setBlockData(data, applyPhysics);
 							placed = true;
 						}
 					}
-				} else if (wallTorch.isOfType(type)) {
+				} else if (type == Material.WALL_TORCH) {
 					Directional data;
 					if (ourValues != null)
 						data = (Directional) ourValues.data;
@@ -177,7 +175,7 @@ public class NewBlockCompat implements BlockCompat {
 						data = (Directional) Bukkit.createBlockData(type);
 					
 					Block relative = block.getRelative(data.getFacing());
-					if ((!relative.getType().isOccluding() && !specialTorchSides.isOfType(relative)) || rotateForce) {
+					if ((!canSupportWallTorch(relative, data.getFacing().getOppositeFace())) || rotateForce) {
 						// Attempt to figure out a better rotation
 						BlockFace face = findWallTorchSide(block);
 						if (face != null) { // Found better torch spot
@@ -261,22 +259,49 @@ public class NewBlockCompat implements BlockCompat {
 					block.setBlockData(ourValues.data, applyPhysics);
 			}
 		}
-		
-		private void loadTypes() {
-			floorTorch = Aliases.javaItemType("floor torch");
-			wallTorch = Aliases.javaItemType("wall torch");
-			
-			specialTorchSides = Aliases.javaItemType("special torch sides");
-			specialTorchFloors = Aliases.javaItemType("special torch floors");
-			
-			typesLoaded = true;
+
+		// 1.19+
+		// TODO: remove in 2.10
+		private static final boolean HAS_BLOCK_SUPPORT = Skript.classExists("org.bukkit.block.BlockSupport");
+
+		/**
+		 * Returns whether this block can support a floor torch.
+		 * @param block The block the torch will be placed on
+		 * @return whether the block can support the torch.
+		 */
+		private static boolean canSupportFloorTorch(Block block) {
+			if (HAS_BLOCK_SUPPORT)
+				return block.getBlockData().isFaceSturdy(BlockFace.UP, BlockSupport.CENTER);
+
+			Material material = block.getType();
+			return (material.isOccluding()
+				|| canSupportWallTorch(block, null)
+				|| ItemUtils.isFence(block)
+				|| ItemUtils.isGlass(material)
+				|| material == Material.HOPPER
+				|| (material == Material.SNOW && (((Snow) block.getBlockData()).getLayers() == 8))
+			);
+		}
+
+		/**
+		 * Returns whether this block can support a wall torch. In 1.19+, a face can be specified.
+		 * @param block The block the torch will be placed on
+		 * @param face The face the torch will be placed on (only considered in 1.19+)
+		 * @return whether the block face can support the torch.
+		 */
+		private static boolean canSupportWallTorch(Block block, @Nullable BlockFace face) {
+			if (HAS_BLOCK_SUPPORT && face != null)
+				return block.getBlockData().isFaceSturdy(face, BlockSupport.FULL);
+
+			Material material = block.getType();
+			return material.isOccluding() || material == Material.SOUL_SAND || material == Material.SPAWNER;
 		}
 
 		@Nullable
 		private BlockFace findWallTorchSide(Block block) {
 			for (BlockFace face : CARDINAL_FACES) {
 				Block relative = block.getRelative(face);
-				if (relative.getType().isOccluding() || specialTorchSides.isOfType(relative))
+				if (relative.getType().isOccluding() || canSupportWallTorch(relative, face.getOppositeFace()))
 					return face.getOppositeFace(); // Torch can be rotated towards from this face
 			}
 			
@@ -292,16 +317,30 @@ public class NewBlockCompat implements BlockCompat {
 	}
 	
 	private NewBlockSetter setter = new NewBlockSetter();
-	
+
+	/**
+	 * @deprecated Use {@link #getBlockValues(BlockData)} instead
+	 */
+	@Deprecated
 	@Nullable
 	@Override
-	public BlockValues getBlockValues(BlockState block) {
-		// If block doesn't have useful data, data field of type is MaterialData
-		if (block.getType().isBlock())
-			return new NewBlockValues(block.getType(), block.getBlockData(), false);
+	public BlockValues getBlockValues(BlockState blockState) {
+		return getBlockValues(blockState.getBlockData());
+	}
+
+	@Override
+	public @Nullable BlockValues getBlockValues(Material material) {
+		if (material.isBlock())
+			return new NewBlockValues(material, Bukkit.createBlockData(material), true);
 		return null;
 	}
-	
+
+	@Nullable
+	@Override
+	public BlockValues getBlockValues(BlockData blockData) {
+		return new NewBlockValues(blockData.getMaterial(), blockData, false);
+	}
+
 	@Override
 	@Nullable
 	public BlockValues getBlockValues(ItemStack stack) {
@@ -312,15 +351,16 @@ public class NewBlockCompat implements BlockCompat {
 		}
 		return null;
 	}
-	
+
 	@Override
 	public BlockSetter getSetter() {
 		return setter;
 	}
 
+	@Deprecated
 	@Override
 	public BlockState fallingBlockToState(FallingBlock entity) {
-		BlockState state = entity.getWorld().getBlockAt(0, 0, 0).getState();
+		BlockState state = entity.getLocation().getBlock().getState();
 		state.setBlockData(entity.getBlockData());
 		return state;
 	}

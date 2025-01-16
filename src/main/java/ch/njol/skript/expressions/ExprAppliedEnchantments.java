@@ -1,27 +1,9 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
 
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.event.Event;
 import org.bukkit.event.enchantment.EnchantItemEvent;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.classes.Changer.ChangeMode;
@@ -65,6 +47,9 @@ public class ExprAppliedEnchantments extends SimpleExpression<EnchantmentType> {
 	@Override
 	@Nullable
 	protected EnchantmentType[] get(Event e) {
+		if (!(e instanceof EnchantItemEvent))
+			return null;
+
 		return ((EnchantItemEvent) e).getEnchantsToAdd().entrySet().stream()
 				.map(entry -> new EnchantmentType(entry.getKey(), entry.getValue()))
 				.toArray(EnchantmentType[]::new);
@@ -81,6 +66,9 @@ public class ExprAppliedEnchantments extends SimpleExpression<EnchantmentType> {
 	@SuppressWarnings("null")
 	@Override
 	public void change(Event event, @Nullable Object[] delta, ChangeMode mode) {
+		if (!(event instanceof EnchantItemEvent))
+			return;
+
 		EnchantmentType[] enchants = new EnchantmentType[delta != null ? delta.length : 0];
 		if (delta != null && delta.length != 0) {
 			for (int i = 0; i < delta.length; i++) {

@@ -1,29 +1,14 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.lang.function;
 
-import java.util.ArrayList;
-import java.util.Collection;
-
-import org.eclipse.jdt.annotation.Nullable;
-
+import ch.njol.skript.Skript;
 import ch.njol.skript.classes.ClassInfo;
+import ch.njol.skript.util.Utils;
+import ch.njol.skript.util.Contract;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.WeakHashMap;
 
 /**
  * Function signature: name, parameter types and a return type.
@@ -44,14 +29,18 @@ public class Signature<T> {
 	 * Parameters taken by this function, in order.
 	 */
 	final Parameter<?>[] parameters;
-	
+
+	/**
+	 * Whether this function is only accessible in the script it was declared in
+	 */
+	final boolean local;
+
 	/**
 	 * Return type of this function. For functions that return nothing, this
 	 * is null. void is never used as return type, because it is not registered
 	 * to Skript's type system.
 	 */
-	@Nullable
-	final ClassInfo<T> returnType;
+	final @Nullable ClassInfo<T> returnType;
 	
 	/**
 	 * Whether this function returns a single value, or multiple ones.
@@ -63,15 +52,47 @@ public class Signature<T> {
 	 * References (function calls) to function with this signature.
 	 */
 	final Collection<FunctionReference<?>> calls;
-	
-	public Signature(String script, String name, Parameter<?>[] parameters, @Nullable final ClassInfo<T> returnType, boolean single) {
+
+	/**
+	 * The class path for the origin of this signature.
+	 */
+	final @Nullable String originClassPath;
+
+	/**
+	 * An overriding contract for this function (e.g. to base its return on its arguments).
+	 */
+	final @Nullable Contract contract;
+
+	public Signature(String script,
+					 String name,
+					 Parameter<?>[] parameters, boolean local,
+					 @Nullable ClassInfo<T> returnType,
+					 boolean single,
+					 @Nullable String originClassPath,
+					 @Nullable Contract contract) {
 		this.script = script;
 		this.name = name;
 		this.parameters = parameters;
+		this.local = local;
 		this.returnType = returnType;
 		this.single = single;
-		
-		calls = new ArrayList<>();
+		this.originClassPath = originClassPath;
+		this.contract = contract;
+
+		calls = Collections.newSetFromMap(new WeakHashMap<>());
+	}
+
+	public Signature(String script,
+					 String name,
+					 Parameter<?>[] parameters, boolean local,
+					 @Nullable ClassInfo<T> returnType,
+					 boolean single,
+					 @Nullable String originClassPath) {
+		this(script, name, parameters, local, returnType, single, originClassPath, null);
+	}
+
+	public Signature(String script, String name, Parameter<?>[] parameters, boolean local, @Nullable ClassInfo<T> returnType, boolean single) {
+		this(script, name, parameters, local, returnType, single, null);
 	}
 	
 	public String getName() {
@@ -86,16 +107,27 @@ public class Signature<T> {
 	public Parameter<?>[] getParameters() {
 		return parameters;
 	}
-	
-	@Nullable
-	public ClassInfo<T> getReturnType() {
+
+	public boolean isLocal() {
+		return local;
+	}
+
+	public @Nullable ClassInfo<T> getReturnType() {
 		return returnType;
 	}
 	
 	public boolean isSingle() {
 		return single;
 	}
-	
+
+	public String getOriginClassPath() {
+		return originClassPath;
+	}
+
+	public @Nullable Contract getContract() {
+		return contract;
+	}
+
 	/**
 	 * Gets maximum number of parameters that the function described by this
 	 * signature is able to take.
@@ -123,5 +155,34 @@ public class Signature<T> {
 	public int hashCode() {
 		return name.hashCode();
 	}
-	
+
+	@Override
+	public String toString() {
+		return toString(true, Skript.debug());
+	}
+
+	public String toString(boolean includeReturnType, boolean debug) {
+		StringBuilder signatureBuilder = new StringBuilder();
+
+		if (local)
+			signatureBuilder.append("local ");
+		signatureBuilder.append(name);
+
+		signatureBuilder.append('(');
+		int lastParameterIndex = parameters.length - 1;
+		for (int i = 0; i < parameters.length; i++) {
+			signatureBuilder.append(parameters[i].toString(debug));
+			if (i != lastParameterIndex)
+				signatureBuilder.append(", ");
+		}
+		signatureBuilder.append(')');
+
+		if (includeReturnType && returnType != null) {
+			signatureBuilder.append(" :: ");
+			signatureBuilder.append(Utils.toEnglishPlural(returnType.getCodeName(), !single));
+		}
+
+		return signatureBuilder.toString();
+	}
+
 }

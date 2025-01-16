@@ -1,28 +1,10 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.localization;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Locale;
 
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.Skript;
 
@@ -49,12 +31,12 @@ public class Message {
 			firstChange = false;
 		});
 	}
-	
+
 	public final String key;
 	@Nullable
 	private String value;
 	boolean revalidate = true;
-	
+
 	public Message(final String key) {
 		this.key = "" + key.toLowerCase(Locale.ENGLISH);
 		messages.add(this);
@@ -62,7 +44,7 @@ public class Message {
 		if (Skript.testing() && Language.isInitialized() && !Language.keyExists(this.key))
 			Language.missingEntryError(this.key);
 	}
-	
+
 	/**
 	 * @return The value of this message in the current language
 	 */
@@ -82,7 +64,18 @@ public class Message {
 		validate();
 		return value;
 	}
-	
+
+	/**
+	 * Gets the text this Message refers to. If value is null returns a default value.
+	 *
+	 * @param defaultValue The string this method refers to if value is null
+	 * @return This message's value or default value if null
+	 */
+	public final String getValueOrDefault(String defaultValue) {
+		validate();
+		return value == null ? defaultValue : value;
+	}
+
 	/**
 	 * Checks whether this value is set in the current language or the english default.
 	 * 

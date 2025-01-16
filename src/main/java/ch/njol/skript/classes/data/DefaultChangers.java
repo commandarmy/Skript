@@ -1,21 +1,3 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.classes.data;
 
 import org.bukkit.Material;
@@ -31,7 +13,7 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffectType;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.aliases.ItemType;
@@ -77,6 +59,7 @@ public class DefaultChangers {
 				}
 				return;
 			}
+			boolean hasItem = false;
 			for (final Entity e : entities) {
 				for (final Object d : delta) {
 					if (d instanceof PotionEffectType) {
@@ -90,16 +73,18 @@ public class DefaultChangers {
 							if (d instanceof Experience) {
 								p.giveExp(((Experience) d).getXP());
 							} else if (d instanceof Inventory) {
-								final PlayerInventory invi = p.getInventory();
-								if (mode == ChangeMode.ADD) {
-									for (final ItemStack i : (Inventory) d) {
-										if (i != null)
-											invi.addItem(i);
+								PlayerInventory inventory = p.getInventory();
+								for (ItemStack itemStack : (Inventory) d) {
+									if (itemStack == null)
+										continue;
+									if (mode == ChangeMode.ADD) {
+										inventory.addItem(itemStack);
+									} else {
+										inventory.remove(itemStack);
 									}
-								} else {
-									invi.removeItem(((Inventory) d).getContents());
 								}
 							} else if (d instanceof ItemType) {
+								hasItem = true;
 								final PlayerInventory invi = p.getInventory();
 								if (mode == ChangeMode.ADD)
 									((ItemType) d).addTo(invi);
@@ -111,7 +96,7 @@ public class DefaultChangers {
 						}
 					}
 				}
-				if (e instanceof Player)
+				if (e instanceof Player && hasItem)
 					PlayerUtils.updateInventory((Player) e);
 			}
 		}
@@ -259,7 +244,10 @@ public class DefaultChangers {
 						for (final Object d : delta) {
 							if (d instanceof Inventory) {
 								assert mode == ChangeMode.REMOVE;
-								invi.removeItem(((Inventory) d).getContents());
+								for (ItemStack itemStack : (Inventory) d) {
+									if (itemStack != null)
+										invi.removeItem(itemStack);
+								}
 							} else {
 								if (mode == ChangeMode.REMOVE)
 									((ItemType) d).removeFrom(invi);
@@ -286,25 +274,22 @@ public class DefaultChangers {
 			if (mode == ChangeMode.RESET)
 				return null; // REMIND regenerate?
 			if (mode == ChangeMode.SET)
-				if (Skript.classExists("org.bukkit.block.data.BlockData"))
-					return CollectionUtils.array(ItemType.class, BlockData.class);
-				else
-					return CollectionUtils.array(ItemType.class);
+				return CollectionUtils.array(ItemType.class, BlockData.class);
 			return CollectionUtils.array(ItemType[].class, Inventory[].class);
 		}
 		
 		@Override
 		public void change(final Block[] blocks, final @Nullable Object[] delta, final ChangeMode mode) {
-			for (final Block block : blocks) {
+			for (Block block : blocks) {
 				assert block != null;
 				switch (mode) {
 					case SET:
 						assert delta != null;
-						Object o = delta[0];
-						if (o instanceof ItemType) {
-							((ItemType) delta[0]).getBlock().setBlock(block, true);
-						} else if (o instanceof BlockData) {
-							block.setBlockData(((BlockData) o));
+						Object object = delta[0];
+						if (object instanceof ItemType) {
+							((ItemType) object).getBlock().setBlock(block, true);
+						} else if (object instanceof BlockData) {
+							block.setBlockData(((BlockData) object));
 						}
 						break;
 					case DELETE:
@@ -314,30 +299,30 @@ public class DefaultChangers {
 					case REMOVE:
 					case REMOVE_ALL:
 						assert delta != null;
-						final BlockState state = block.getState();
+						BlockState state = block.getState();
 						if (!(state instanceof InventoryHolder))
 							break;
-						final Inventory invi = ((InventoryHolder) state).getInventory();
+						Inventory invi = ((InventoryHolder) state).getInventory();
 						if (mode == ChangeMode.ADD) {
-							for (final Object d : delta) {
-								if (d instanceof Inventory) {
-									for (final ItemStack i : (Inventory) d) {
+							for (Object obj : delta) {
+								if (obj instanceof Inventory) {
+									for (ItemStack i : (Inventory) obj) {
 										if (i != null)
 											invi.addItem(i);
 									}
 								} else {
-									((ItemType) d).addTo(invi);
+									((ItemType) obj).addTo(invi);
 								}
 							}
 						} else {
-							for (final Object d : delta) {
-								if (d instanceof Inventory) {
-									invi.removeItem(((Inventory) d).getContents());
+							for (Object obj : delta) {
+								if (obj instanceof Inventory) {
+									invi.removeItem(((Inventory) obj).getContents());
 								} else {
 									if (mode == ChangeMode.REMOVE)
-										((ItemType) d).removeFrom(invi);
+										((ItemType) obj).removeFrom(invi);
 									else
-										((ItemType) d).removeAll(invi);
+										((ItemType) obj).removeAll(invi);
 								}
 							}
 						}

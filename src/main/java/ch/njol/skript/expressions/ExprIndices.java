@@ -1,21 +1,3 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
 
 import ch.njol.skript.Skript;
@@ -28,11 +10,11 @@ import ch.njol.skript.lang.ExpressionType;
 import ch.njol.skript.lang.SkriptParser.ParseResult;
 import ch.njol.skript.lang.Variable;
 import ch.njol.skript.lang.util.SimpleExpression;
-import ch.njol.skript.registrations.Comparators;
 import ch.njol.skript.util.LiteralUtils;
 import ch.njol.util.Kleenean;
+import ch.njol.util.Pair;
 import org.bukkit.event.Event;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.Map.Entry;
@@ -54,13 +36,13 @@ import java.util.Map.Entry;
 		"set {_descending-indices::*} to sorted indices of {_leader-board::*} in descending order",
 		"broadcast \"%{_descending-indices::*}%\" #result is fourth, third, second, first"
 })
-@Since("2.4 (indices), INSERT VERSION (sorting)")
+@Since("2.4 (indices), 2.6.1 (sorting)")
 public class ExprIndices extends SimpleExpression<String> {
 
 	static {
 		Skript.registerExpression(ExprIndices.class, String.class, ExpressionType.COMBINED,
-				"[the] (indexes|indices) of %~objects%",
-				"[the] %~objects%'[s] (indexes|indices)",
+				"[(the|all [[of] the])] (indexes|indices) of %~objects%",
+				"%~objects%'[s] (indexes|indices)",
 				"[sorted] (indices|indexes) of %~objects% in (ascending|1¦descending) order",
 				"[sorted] %~objects%'[s] (indices|indexes) in (ascending|1¦descending) order"
 		);
@@ -102,8 +84,14 @@ public class ExprIndices extends SimpleExpression<String> {
 		if (sort) {
 			int direction = descending ? -1 : 1;
 			return variable.entrySet().stream()
-				.sorted((a, b) -> compare(a, b, direction))
-				.map(Entry::getKey)
+				.map((entry) -> new Pair<>(
+					entry.getKey(),
+					entry.getValue() instanceof Map<?,?>
+						? ((Map<?,?>) entry.getValue()).get(null)
+						: entry.getValue()
+				))
+				.sorted((a, b) -> ExprSortedList.compare(a.getValue(), b.getValue()) * direction)
+				.map(Pair::getKey)
 				.toArray(String[]::new);
 		}
 
@@ -130,8 +118,4 @@ public class ExprIndices extends SimpleExpression<String> {
 		return text;
 	}
 
-	// Extracted method for better readability
-	private int compare(Entry<String, Object> a, Entry<String, Object> b, int direction) {
-		return Comparators.compare(a.getValue(), b.getValue()).getRelation() * direction;
-	}
 }

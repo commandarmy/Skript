@@ -1,25 +1,7 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.entity;
 
 import org.bukkit.entity.Entity;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.classes.ClassInfo;
 import ch.njol.skript.classes.Parser;
@@ -61,31 +43,7 @@ public class EntityType implements Cloneable, YggdrasilSerializable {
 						return "entitytype:" + t.toString();
 					}
                 })
-				.serializer(new YggdrasilSerializer<EntityType>() {
-//						return t.amount + "*" + EntityData.serializer.serialize(t.data);
-					@Override
-					@Deprecated
-					@Nullable
-					public EntityType deserialize(final String s) {
-						final String[] split = s.split("\\*", 2);
-						if (split.length != 2)
-							return null;
-						@SuppressWarnings("null")
-						final EntityData<?> d = EntityData.serializer.deserialize(split[1]);
-						if (d == null)
-							return null;
-						try {
-							return new EntityType(d, Integer.parseInt(split[0]));
-						} catch (final NumberFormatException e) {
-							return null;
-						}
-					}
-					
-					@Override
-					public boolean mustSyncDeserialization() {
-						return false;
-					}
-				}));
+				.serializer(new YggdrasilSerializer<>()));
 	}
 	
 	public int amount = -1;

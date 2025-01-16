@@ -1,21 +1,3 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.patterns;
 
 import org.jetbrains.annotations.Nullable;
@@ -51,18 +33,28 @@ public class ParseTagPatternElement extends PatternElement {
 			if (next instanceof LiteralPatternElement) {
 				// (:a)
 				tag = next.toString().trim();
-			} else if (next instanceof GroupPatternElement && ((GroupPatternElement) next).getPatternElement() instanceof ChoicePatternElement) {
-				// :(a|b)
-				ChoicePatternElement choicePatternElement = (ChoicePatternElement) ((GroupPatternElement) next).getPatternElement();
-				List<PatternElement> patternElements = choicePatternElement.getPatternElements();
-				for (int i = 0; i < patternElements.size(); i++) {
-					PatternElement patternElement = patternElements.get(i);
-					// Prevent a pattern such as :(a|b|) from being turned into (a:a|b:b|:), instead (a:a|b:b|)
-					if (patternElement instanceof LiteralPatternElement && !patternElement.toString().isEmpty()) {
-						ParseTagPatternElement newTag = new ParseTagPatternElement(patternElement.toString().trim());
-						newTag.setNext(patternElement);
-						newTag.originalNext = patternElement;
-						patternElements.set(i, newTag);
+			} else {
+				// Get the inner element from either a group or optional pattern element
+				PatternElement inner = null;
+				if (next instanceof GroupPatternElement) {
+					inner = ((GroupPatternElement) next).getPatternElement();
+				} else if (next instanceof OptionalPatternElement) {
+					inner = ((OptionalPatternElement) next).getPatternElement();
+				}
+
+				if (inner instanceof ChoicePatternElement) {
+					// :(a|b) or :[a|b]
+					ChoicePatternElement choicePatternElement = (ChoicePatternElement) inner;
+					List<PatternElement> patternElements = choicePatternElement.getPatternElements();
+					for (int i = 0; i < patternElements.size(); i++) {
+						PatternElement patternElement = patternElements.get(i);
+						// Prevent a pattern such as :(a|b|) from being turned into (a:a|b:b|:), instead (a:a|b:b|)
+						if (patternElement instanceof LiteralPatternElement && !patternElement.toString().isEmpty()) {
+							ParseTagPatternElement newTag = new ParseTagPatternElement(patternElement.toString().trim());
+							newTag.setNext(patternElement);
+							newTag.originalNext = patternElement;
+							patternElements.set(i, newTag);
+						}
 					}
 				}
 			}

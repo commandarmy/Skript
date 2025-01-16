@@ -1,21 +1,3 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.hooks.regions;
 
 import java.io.IOException;
@@ -35,7 +17,7 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.hooks.regions.classes.Region;
@@ -60,17 +42,7 @@ public class WorldGuardHook extends RegionsPlugin<WorldGuardPlugin> {
 	
 	@Override
 	protected boolean init() {
-		if (!Skript.classExists("com.sk89q.worldguard.WorldGuard")) { // Assume WorldGuard 6
-			try {
-				Class<?> oldHook = Class.forName("ch.njol.skript.module.worldguard6.WorldGuard6Hook", true, getClass().getClassLoader());
-				oldHook.getDeclaredConstructor().newInstance();
-				return true;
-			} catch (ClassNotFoundException | InstantiationException | IllegalAccessException | IllegalArgumentException
-					| InvocationTargetException | NoSuchMethodException | SecurityException e) {
-				Skript.error("An error occurred while trying to enable support for WorldGuard 6. WorldGuard region support has been disabled!");
-			}
-			return false;
-		} else if (!Skript.classExists("com.sk89q.worldedit.math.BlockVector3")) {
+		if (!Skript.classExists("com.sk89q.worldedit.math.BlockVector3")) {
 			Skript.error("WorldEdit you're using is not compatible with Skript. Disabling WorldGuard support!");
 			return false;
 		}

@@ -1,21 +1,3 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
 
 import java.net.InetAddress;
@@ -26,7 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.server.ServerListPingEvent;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import com.destroystokyo.paper.event.server.PaperServerListPingEvent;
 import ch.njol.skript.Skript;
@@ -67,13 +49,13 @@ public class ExprIP extends SimpleExpression<String> {
 	@SuppressWarnings("null")
 	private Expression<Player> players;
 
-	private boolean isConnectEvent, isProperty;
+	private boolean isProperty;
 
 	@SuppressWarnings({"null", "unchecked"})
 	@Override
 	public boolean init(Expression<?>[] exprs, int matchedPattern, Kleenean isDelayed, ParseResult parseResult) {
 		isProperty = matchedPattern < 2;
-		isConnectEvent = getParser().isCurrentEvent(PlayerLoginEvent.class);
+		boolean isConnectEvent = getParser().isCurrentEvent(PlayerLoginEvent.class);
 		boolean isServerPingEvent = getParser().isCurrentEvent(ServerListPingEvent.class) ||
 				(PAPER_EVENT_EXISTS && getParser().isCurrentEvent(PaperServerListPingEvent.class));
 		if (isProperty) {
@@ -90,12 +72,14 @@ public class ExprIP extends SimpleExpression<String> {
 	protected String[] get(Event e) {
 		if (!isProperty) {
 			InetAddress address;
-			if (isConnectEvent)
+			if (e instanceof PlayerLoginEvent)
 				// Return IP address of the connected player in connect event
 				address = ((PlayerLoginEvent) e).getAddress();
-			else
+			else if (e instanceof ServerListPingEvent)
 				// Return IP address of the pinger in server list ping event
 				address = ((ServerListPingEvent) e).getAddress();
+			else
+				return null;
 			return CollectionUtils.array(address.getHostAddress());
 		}
 
@@ -111,7 +95,7 @@ public class ExprIP extends SimpleExpression<String> {
 		InetAddress address;
 		// The player has no IP yet in a connect event, but the event has it
 		// It is a "feature" of Spigot, apparently
-		if (isConnectEvent && ((PlayerLoginEvent) e).getPlayer().equals(player)) {
+		if (e instanceof PlayerLoginEvent && ((PlayerLoginEvent) e).getPlayer().equals(player)) {
 			address = ((PlayerLoginEvent) e).getAddress();
 		} else {
 			InetSocketAddress sockAddr = player.getAddress();

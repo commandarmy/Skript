@@ -1,21 +1,3 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
 
 import org.bukkit.Chunk;
@@ -24,11 +6,11 @@ import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.event.Event;
 import org.bukkit.event.player.PlayerTeleportEvent;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.classes.Changer.ChangeMode;
-import ch.njol.skript.classes.Converter;
+import org.skriptlang.skript.lang.converter.Converter;
 import ch.njol.skript.doc.Description;
 import ch.njol.skript.doc.Examples;
 import ch.njol.skript.doc.Name;
@@ -74,23 +56,19 @@ public class ExprWorld extends PropertyExpression<Object, World> {
 	protected World[] get(final Event e, final Object[] source) {
 		if (source instanceof World[]) // event value (see init)
 			return (World[]) source;
-		return get(source, new Converter<Object, World>() {
-			@Override
-			@Nullable
-			public World convert(final Object o) {
-				if (o instanceof Entity) {
-					if (getTime() > 0 && e instanceof PlayerTeleportEvent && o.equals(((PlayerTeleportEvent) e).getPlayer()) && !Delay.isDelayed(e))
-						return ((PlayerTeleportEvent) e).getTo().getWorld();
-					else
-						return ((Entity) o).getWorld();
-				} else if (o instanceof Location) {
-					return ((Location) o).getWorld();
-				} else if (o instanceof Chunk) {
-					return ((Chunk) o).getWorld();
-				}
-				assert false : o;
-				return null;
+		return get(source, obj -> {
+			if (obj instanceof Entity) {
+				if (getTime() > 0 && e instanceof PlayerTeleportEvent && obj.equals(((PlayerTeleportEvent) e).getPlayer()) && !Delay.isDelayed(e))
+					return ((PlayerTeleportEvent) e).getTo().getWorld();
+				else
+					return ((Entity) obj).getWorld();
+			} else if (obj instanceof Location) {
+				return ((Location) obj).getWorld();
+			} else if (obj instanceof Chunk) {
+				return ((Chunk) obj).getWorld();
 			}
+			assert false : obj;
+			return null;
 		});
 	}
 

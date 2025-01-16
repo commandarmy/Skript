@@ -1,21 +1,3 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.conditions;
 
 import java.util.Random;
@@ -35,7 +17,7 @@ import ch.njol.skript.doc.Since;
 @Name("Is Slime Chunk")
 @Description({"Tests whether a chunk is a so-called slime chunk.",
 		"Slimes can generally spawn in the swamp biome and in slime chunks.",
-		"For more info, see <a href='https://minecraft.gamepedia.com/Slime#.22Slime_chunks.22'>the Minecraft wiki</a>."})
+		"For more info, see <a href='https://minecraft.wiki/w/Slime#.22Slime_chunks.22'>the Minecraft wiki</a>."})
 @Examples({"command /slimey:",
 		"\ttrigger:",
 		"\t\tif chunk at player is a slime chunk:",

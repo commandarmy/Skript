@@ -1,37 +1,20 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.util;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.localization.Message;
 import ch.njol.util.Math2;
 import ch.njol.yggdrasil.YggdrasilSerializable;
+import org.skriptlang.skript.lang.util.Cyclical;
 
 /**
  * @author Peter Güttinger
  */
-public class Time implements YggdrasilSerializable {
+public class Time implements YggdrasilSerializable, Cyclical<Integer> {
 	
 	private final static int TICKS_PER_HOUR = 1000, TICKS_PER_DAY = 24 * TICKS_PER_HOUR;
 	private final static double TICKS_PER_MINUTE = 1000. / 60;
@@ -41,7 +24,10 @@ public class Time implements YggdrasilSerializable {
 	private final static int HOUR_ZERO = 6 * TICKS_PER_HOUR;
 	
 	private final int time;
-	
+
+	private static final Pattern DAY_TIME_PATTERN = Pattern.compile("(\\d?\\d)(:(\\d\\d))? ?(am|pm)", Pattern.CASE_INSENSITIVE);
+	private static final Pattern TIME_PATTERN = Pattern.compile("\\d?\\d:\\d\\d", Pattern.CASE_INSENSITIVE);
+
 	public Time() {
 		time = 0;
 	}
@@ -95,7 +81,7 @@ public class Time implements YggdrasilSerializable {
 //		if (s.matches("\\d+")) {
 //			return new Time(Integer.parseInt(s));
 //		} else
-		if (s.matches("\\d?\\d:\\d\\d")) {
+		if (TIME_PATTERN.matcher(s).matches()) {
 			int hours = Utils.parseInt(s.split(":")[0]);
 			if (hours == 24) { // allows to write 24:00 - 24:59 instead of 0:00-0:59
 				hours = 0;
@@ -110,7 +96,7 @@ public class Time implements YggdrasilSerializable {
 			}
 			return new Time((int) Math.round(hours * TICKS_PER_HOUR - HOUR_ZERO + minutes * TICKS_PER_MINUTE));
 		} else {
-			final Matcher m = Pattern.compile("(\\d?\\d)(:(\\d\\d))? ?(am|pm)", Pattern.CASE_INSENSITIVE).matcher(s);
+			final Matcher m = DAY_TIME_PATTERN.matcher(s);
 			if (m.matches()) {
 				int hours = Utils.parseInt(m.group(1));
 				if (hours == 12) {
@@ -149,6 +135,16 @@ public class Time implements YggdrasilSerializable {
 			return false;
 		final Time other = (Time) obj;
 		return time == other.time;
+	}
+	
+	@Override
+	public Integer getMaximum() {
+		return TICKS_PER_DAY;
+	}
+	
+	@Override
+	public Integer getMinimum() {
+		return 0;
 	}
 	
 }

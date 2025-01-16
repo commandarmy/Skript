@@ -1,25 +1,7 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
 
 import org.bukkit.event.Event;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import com.destroystokyo.paper.event.server.PaperServerListPingEvent;
 import ch.njol.skript.Skript;
@@ -59,7 +41,7 @@ import ch.njol.util.coll.CollectionUtils;
 public class ExprProtocolVersion extends SimpleExpression<Long> {
 
 	static {
-		Skript.registerExpression(ExprProtocolVersion.class, Long.class, ExpressionType.SIMPLE, "[the] [(sent|required|fake)] protocol version [number]");
+		Skript.registerExpression(ExprProtocolVersion.class, Long.class, ExpressionType.SIMPLE, "[the] [server] [(sent|required|fake)] protocol version [number]");
 	}
 
 	private static final boolean PAPER_EVENT_EXISTS = Skript.classExists("com.destroystokyo.paper.event.server.PaperServerListPingEvent");
@@ -79,6 +61,9 @@ public class ExprProtocolVersion extends SimpleExpression<Long> {
 	@Override
 	@Nullable
 	public Long[] get(Event e) {
+		if (!(e instanceof PaperServerListPingEvent))
+			return null;
+
 		return CollectionUtils.array((long) ((PaperServerListPingEvent) e).getProtocolVersion());
 	}
 
@@ -97,6 +82,9 @@ public class ExprProtocolVersion extends SimpleExpression<Long> {
 	@SuppressWarnings("null")
 	@Override
 	public void change(Event e, @Nullable Object[] delta, ChangeMode mode) {
+		if (!(e instanceof PaperServerListPingEvent))
+			return;
+
 		((PaperServerListPingEvent) e).setProtocolVersion(((Number) delta[0]).intValue());
 	}
 

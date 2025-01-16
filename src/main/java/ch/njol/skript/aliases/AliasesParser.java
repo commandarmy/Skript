@@ -1,21 +1,3 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.aliases;
 
 import java.util.ArrayList;
@@ -23,10 +5,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.aliases.AliasesProvider.Variation;
@@ -217,9 +200,20 @@ public class AliasesParser {
 				throw new AssertionError("missing space between id and tags in " + item);
 			}
 			id = item.substring(0, firstBracket - 1);
-			String json = item.substring(firstBracket);
-			assert json != null;
-			tags = provider.parseMojangson(json);
+			String json;
+			int jsonEndIndex = item.indexOf("} ["); // may also have block states/data
+			if (jsonEndIndex == -1) {
+				json = item.substring(firstBracket);
+			} else {
+				json = item.substring(firstBracket, jsonEndIndex + 1);
+				id = id + item.substring(jsonEndIndex + 2); // essentially rips out json part
+			}
+			if (Aliases.USING_ITEM_COMPONENTS) {
+				json = "[" + json.substring(1, json.length() - 1) + "]"; // replace brackets (not json :))
+				tags = Collections.singletonMap("components", json);
+			} else {
+				tags = provider.parseMojangson(json);
+			}
 		}
 		
 		// Separate block state from id
@@ -682,7 +676,7 @@ public class AliasesParser {
 				Skript.warning(m_empty_alias.toString());
 			} else {
 				// Intern id to save some memory
-				id = id.toLowerCase().intern();
+				id = id.toLowerCase(Locale.ENGLISH).intern();
 				assert id != null;
 				try {
 					// Create singular and plural forms of the alias
@@ -701,18 +695,59 @@ public class AliasesParser {
 	
 	/**
 	 * Fixes an alias name by trimming it and removing all extraneous spaces
-	 * between the words.
+	 * between the words or before broken pipe characters (¦).
 	 * @param name Name to be fixed.
 	 * @return Name fixed.
 	 */
 	protected String fixName(String name) {
-		String result = org.apache.commons.lang.StringUtils.normalizeSpace(name);
-		
-		int i = result.indexOf('¦');
-		
-		if (i != -1 && Character.isWhitespace(result.codePointBefore(i)))
-			result = result.substring(0, i - 1) + result.substring(i);
-		return result;
+		/*
+		 * General logic:
+		 *
+		 * We rebuild the string from scratch, but skip any whitespace if
+		 * 	1. The previous character was also whitespace
+		 * 	2. The next character is a broken pipe (¦)
+		 *        - The broken pipe is used to separate the singular and plural forms of the alias
+		 *        - We want to allow a space before it for readability
+		 *        - We also don't want to literally include the space in the alias
+		 *
+		 * We also keep track of the first and last non-whitespace characters to trim the string manually.
+		 * Since we're also skipping whitespace, we need to keep track of how many characters we've skipped
+		 * so that our indices for those characters aren't misaligned.
+		 * */
+
+		StringBuilder sb = new StringBuilder(name.length());
+
+		int firstNonWhitespace = -1;
+		int lastNonWhitespace = -1;
+		int lastWhitespace = -1;
+		int stripped = 0;
+
+		for (int i = 0; i < name.length(); ++i) {
+			char c = name.charAt(i);
+			if (c > ' ') {
+				// The index will be off by the number of characters we've stripped so far
+				int adjustedIndex = i - stripped;
+
+				if (firstNonWhitespace == -1)
+					firstNonWhitespace = adjustedIndex;
+				lastNonWhitespace = adjustedIndex;
+			} else {
+				int oldLastWhitespace = lastWhitespace;
+				lastWhitespace = i;
+
+				if (
+					(oldLastWhitespace != -1 && oldLastWhitespace == i - 1)
+					|| (i < name.length() - 1 && name.charAt(i + 1) == '¦')
+				) {
+					stripped++;
+					continue;
+				}
+			}
+
+			sb.append(c);
+		}
+
+		return sb.substring(firstNonWhitespace, lastNonWhitespace + 1);
 	}
 	
 	public void registerCondition(String name, Function<String, Boolean> condition) {

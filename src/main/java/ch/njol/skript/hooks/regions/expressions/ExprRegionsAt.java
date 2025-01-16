@@ -1,33 +1,10 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.hooks.regions.expressions;
-
-import java.util.ArrayList;
-
-import org.bukkit.Location;
-import org.bukkit.event.Event;
-import org.eclipse.jdt.annotation.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.doc.Description;
 import ch.njol.skript.doc.Examples;
 import ch.njol.skript.doc.Name;
+import ch.njol.skript.doc.RequiredPlugins;
 import ch.njol.skript.doc.Since;
 import ch.njol.skript.hooks.regions.RegionsPlugin;
 import ch.njol.skript.hooks.regions.classes.Region;
@@ -37,21 +14,31 @@ import ch.njol.skript.lang.SkriptParser.ParseResult;
 import ch.njol.skript.lang.util.SimpleExpression;
 import ch.njol.skript.util.Direction;
 import ch.njol.util.Kleenean;
+import org.bukkit.Location;
+import org.bukkit.event.Event;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
 
 /**
  * @author Peter Güttinger
  */
 @Name("Regions At")
-@Description({"All <a href='../classes.html#region'>regions</a> at a particular <a href='../classes/#location'>location</a>.",
-		"This expression requires a supported regions plugin to be installed."})
-@Examples({"On click on a sign:",
-		"	line 1 of the clicked block is \"[region info]\"",
-		"	set {_regions::*} to regions at the clicked block",
-		"	if {_regions::*} is empty:",
-		"		message \"No regions exist at this sign.\"",
-		"	else:",
-		"		message \"Regions containing this sign: &lt;gold&gt;%{_regions::*}%<r>.\""})
+@Description({
+	"All <a href='./classes.html#region'>regions</a> at a particular <a href='./classes/#location'>location</a>.",
+	"This expression requires a supported regions plugin to be installed."
+})
+@Examples({
+	"On click on a sign:",
+	"\tline 1 of the clicked block is \"[region info]\"",
+	"\tset {_regions::*} to regions at the clicked block",
+	"\tif {_regions::*} is empty:",
+	"\t\tmessage \"No regions exist at this sign.\"",
+	"\telse:",
+	"\t\tmessage \"Regions containing this sign: &lt;gold&gt;%{_regions::*}%<r>.\""
+})
 @Since("2.1")
+@RequiredPlugins("Supported regions plugin")
 public class ExprRegionsAt extends SimpleExpression<Region> {
 	static {
 		Skript.registerExpression(ExprRegionsAt.class, Region.class, ExpressionType.PROPERTY,

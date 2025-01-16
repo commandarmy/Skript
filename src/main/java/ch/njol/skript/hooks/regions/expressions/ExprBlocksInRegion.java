@@ -1,36 +1,10 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.hooks.regions.expressions;
-
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-
-import org.bukkit.block.Block;
-import org.bukkit.event.Event;
-import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.jdt.annotation.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.doc.Description;
 import ch.njol.skript.doc.Examples;
 import ch.njol.skript.doc.Name;
+import ch.njol.skript.doc.RequiredPlugins;
 import ch.njol.skript.doc.Since;
 import ch.njol.skript.hooks.regions.classes.Region;
 import ch.njol.skript.lang.Expression;
@@ -40,16 +14,29 @@ import ch.njol.skript.lang.util.SimpleExpression;
 import ch.njol.util.Kleenean;
 import ch.njol.util.coll.iterator.ArrayIterator;
 import ch.njol.util.coll.iterator.EmptyIterator;
+import org.bukkit.block.Block;
+import org.bukkit.event.Event;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 /**
  * @author Peter Güttinger
  */
 @Name("Blocks in Region")
-@Description({"All blocks in a <a href='../classes.html#region'>region</a>.",
-		"This expression requires a supported regions plugin to be installed."})
-@Examples({"loop all blocks in the region {arena.%{faction.%player%}%}:",
-		"	clear the loop-block"})
+@Description({
+	"All blocks in a <a href='./classes.html#region'>region</a>.",
+	"This expression requires a supported regions plugin to be installed."
+})
+@Examples({
+	"loop all blocks in the region {arena.%{faction.%player%}%}:",
+	"\tclear the loop-block"
+})
 @Since("2.1")
+@RequiredPlugins("Supported regions plugin")
 public class ExprBlocksInRegion extends SimpleExpression<Block> {
 	static {
 		Skript.registerExpression(ExprBlocksInRegion.class, Block.class, ExpressionType.COMBINED,
@@ -77,7 +64,7 @@ public class ExprBlocksInRegion extends SimpleExpression<Block> {
 	}
 	
 	@Override
-	@NonNull
+	@NotNull
 	public Iterator<Block> iterator(final Event e) {
 		final Region[] rs = regions.getArray(e);
 		if (rs.length == 0)

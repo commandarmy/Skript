@@ -1,77 +1,52 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.classes.data;
 
+import ch.njol.skript.ScriptLoader;
 import ch.njol.skript.Skript;
 import ch.njol.skript.aliases.Aliases;
 import ch.njol.skript.aliases.ItemData;
 import ch.njol.skript.aliases.ItemType;
-import ch.njol.skript.bukkitutil.EnchantmentUtils;
 import ch.njol.skript.bukkitutil.ItemUtils;
-import ch.njol.skript.classes.Arithmetic;
-import ch.njol.skript.classes.Changer;
-import ch.njol.skript.classes.ClassInfo;
-import ch.njol.skript.classes.EnumSerializer;
-import ch.njol.skript.classes.Parser;
-import ch.njol.skript.classes.Serializer;
-import ch.njol.skript.classes.YggdrasilSerializer;
+import ch.njol.skript.classes.*;
+import ch.njol.skript.config.Config;
+import ch.njol.skript.config.Node;
 import ch.njol.skript.expressions.base.EventValueExpression;
 import ch.njol.skript.lang.ParseContext;
+import ch.njol.skript.lang.function.DynamicFunctionReference;
 import ch.njol.skript.lang.util.SimpleLiteral;
+import ch.njol.skript.lang.util.common.AnyAmount;
+import ch.njol.skript.lang.util.common.AnyContains;
+import ch.njol.skript.lang.util.common.AnyNamed;
+import ch.njol.skript.lang.util.common.AnyValued;
 import ch.njol.skript.localization.Noun;
 import ch.njol.skript.localization.RegexMessage;
 import ch.njol.skript.registrations.Classes;
-import ch.njol.skript.util.Color;
-import ch.njol.skript.util.ColorRGB;
-import ch.njol.skript.util.Date;
-import ch.njol.skript.util.Direction;
-import ch.njol.skript.util.EnchantmentType;
-import ch.njol.skript.util.Experience;
-import ch.njol.skript.util.GameruleValue;
-import ch.njol.skript.util.SkriptColor;
-import ch.njol.skript.util.StructureType;
-import ch.njol.skript.util.Time;
-import ch.njol.skript.util.Timeperiod;
-import ch.njol.skript.util.Timespan;
-import ch.njol.skript.util.Utils;
-import ch.njol.skript.util.WeatherType;
+import ch.njol.skript.util.*;
 import ch.njol.skript.util.slot.Slot;
 import ch.njol.skript.util.visual.VisualEffect;
 import ch.njol.skript.util.visual.VisualEffects;
 import ch.njol.yggdrasil.Fields;
+import org.skriptlang.skript.lang.util.SkriptQueue;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
+import org.skriptlang.skript.lang.script.Script;
+import org.skriptlang.skript.util.Executable;
 
+import java.io.File;
 import java.io.StreamCorruptedException;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
-/**
- * @author Peter Güttinger
- */
 @SuppressWarnings("rawtypes")
 public class SkriptClasses {
 	public SkriptClasses() {}
-	
+
 	static {
+		//noinspection unchecked
 		Classes.registerClass(new ClassInfo<>(ClassInfo.class, "classinfo")
 				.user("types?")
 				.name("Type")
@@ -85,23 +60,24 @@ public class SkriptClasses {
 						"kill the loop-entity")
 				.since("2.0")
 				.after("entitydata", "entitytype", "itemtype")
+				.supplier(() -> (Iterator) Classes.getClassInfos().iterator())
 				.parser(new Parser<ClassInfo>() {
 					@Override
 					@Nullable
 					public ClassInfo parse(final String s, final ParseContext context) {
 						return Classes.getClassInfoFromUserInput(Noun.stripIndefiniteArticle(s));
 					}
-					
+
 					@Override
 					public String toString(final ClassInfo c, final int flags) {
 						return c.toString(flags);
 					}
-					
+
 					@Override
 					public String toVariableNameString(final ClassInfo c) {
 						return c.getCodeName();
 					}
-					
+
 					@Override
 					public String getDebugMessage(final ClassInfo c) {
 						return c.getCodeName();
@@ -115,17 +91,17 @@ public class SkriptClasses {
 						f.putObject("codeName", c.getCodeName());
 						return f;
 					}
-					
+
 					@Override
 					public boolean canBeInstantiated() {
 						return false;
 					}
-					
+
 					@Override
 					public void deserialize(final ClassInfo o, final Fields f) throws StreamCorruptedException {
 						assert false;
 					}
-					
+
 					@Override
 					protected ClassInfo deserialize(final Fields fields) throws StreamCorruptedException {
 						final String codeName = fields.getObject("codeName", String.class);
@@ -136,20 +112,20 @@ public class SkriptClasses {
 							throw new StreamCorruptedException("Invalid ClassInfo " + codeName);
 						return ci;
 					}
-					
+
 //					return c.getCodeName();
 					@Override
 					@Nullable
 					public ClassInfo deserialize(final String s) {
 						return Classes.getClassInfoNoError(s);
 					}
-					
+
 					@Override
 					public boolean mustSyncDeserialization() {
 						return false;
 					}
 				}));
-		
+
 		Classes.registerClass(new ClassInfo<>(WeatherType.class, "weathertype")
 				.user("weather ?types?", "weather conditions?", "weathers?")
 				.name("Weather Type")
@@ -166,22 +142,22 @@ public class SkriptClasses {
 					public WeatherType parse(final String s, final ParseContext context) {
 						return WeatherType.parse(s);
 					}
-					
+
 					@Override
 					public String toString(final WeatherType o, final int flags) {
 						return o.toString(flags);
 					}
-					
+
 					@Override
 					public String toVariableNameString(final WeatherType o) {
-						return "" + o.name().toLowerCase();
+						return "" + o.name().toLowerCase(Locale.ENGLISH);
 					}
 
 				})
 				.serializer(new EnumSerializer<>(WeatherType.class)));
-		
+
 		Classes.registerClass(new ClassInfo<>(ItemType.class, "itemtype")
-				.user("item ?types?", "items", "materials")
+				.user("item ?types?", "materials?")
 				.name("Item Type")
 				.description("An item type is an alias, e.g. 'a pickaxe', 'all plants', etc., and can result in different items when added to an inventory, " +
 						"and unlike <a href='#itemstack'>items</a> they are well suited for checking whether an inventory contains a certain item or whether a certain item is of a certain type.",
@@ -197,6 +173,9 @@ public class SkriptClasses {
 				.since("1.0")
 				.before("itemstack", "entitydata", "entitytype")
 				.after("number", "integer", "long", "time")
+				.supplier(() -> Arrays.stream(Material.values())
+					.map(ItemType::new)
+					.iterator())
 				.parser(new Parser<ItemType>() {
 					@Override
 					@Nullable
@@ -230,7 +209,7 @@ public class SkriptClasses {
 								Enchantment e = ench.getType();
 								if (e == null)
 									continue;
-								b.append("#" + EnchantmentUtils.getKey(e));
+								b.append("#" + e.getKey().toString());
 								b.append(":" + ench.getLevel());
 							}
 						}
@@ -268,23 +247,7 @@ public class SkriptClasses {
 					public String toVariableNameString(final Time o) {
 						return "time:" + o.getTicks();
 					}
-				}).serializer(new YggdrasilSerializer<Time>() {
-//						return "" + t.getTicks();
-					@Override
-					@Nullable
-					public Time deserialize(final String s) {
-						try {
-							return new Time(Integer.parseInt(s));
-						} catch (final NumberFormatException e) {
-							return null;
-						}
-					}
-
-					@Override
-					public boolean mustSyncDeserialization() {
-						return false;
-					}
-				}));
+				}).serializer(new YggdrasilSerializer<>()));
 
 		Classes.registerClass(new ClassInfo<>(Timespan.class, "timespan")
 				.user("time ?spans?")
@@ -300,13 +263,13 @@ public class SkriptClasses {
 						"	wait a minecraft second and 5 ticks",
 						"every 10 mc days and 12 hours:",
 						"	halt for 12.7 irl minutes, 12 hours and 120.5 seconds")
-				.since("1.0, INSERT VERSION (weeks, months, years)")
+				.since("1.0, 2.6.1 (weeks, months, years)")
 				.parser(new Parser<Timespan>() {
 					@Override
 					@Nullable
 					public Timespan parse(final String s, final ParseContext context) {
 						try {
-							return Timespan.parse(s);
+							return Timespan.parse(s, context);
 						} catch (IllegalArgumentException e) {
 							Skript.error("'" + s + "' is not a valid timespan");
 							return null;
@@ -320,56 +283,9 @@ public class SkriptClasses {
 
 					@Override
 					public String toVariableNameString(final Timespan o) {
-						return "timespan:" + o.getMilliSeconds();
+						return "timespan:" + o.getAs(Timespan.TimePeriod.MILLISECOND);
 					}
-				}).serializer(new YggdrasilSerializer<Timespan>() {
-//						return "" + t.getMilliSeconds();
-					@Override
-					@Nullable
-					public Timespan deserialize(final String s) {
-						try {
-							return new Timespan(Long.parseLong(s));
-						} catch (final NumberFormatException e) {
-							return null;
-						}
-					}
-
-					@Override
-					public boolean mustSyncDeserialization() {
-						return false;
-					}
-				})
-				.math(Timespan.class, new Arithmetic<Timespan, Timespan>() {
-					@Override
-					public Timespan difference(final Timespan t1, final Timespan t2) {
-						return new Timespan(Math.abs(t1.getMilliSeconds() - t2.getMilliSeconds()));
-					}
-
-					@Override
-					public Timespan add(final Timespan value, final Timespan difference) {
-						return new Timespan(value.getMilliSeconds() + difference.getMilliSeconds());
-					}
-
-					@Override
-					public Timespan subtract(final Timespan value, final Timespan difference) {
-						return new Timespan(Math.max(0, value.getMilliSeconds() - difference.getMilliSeconds()));
-					}
-
-					@Override
-					public Timespan multiply(Timespan value, Timespan multiplier) {
-						throw new UnsupportedOperationException();
-					}
-
-					@Override
-					public Timespan divide(Timespan value, Timespan divider) {
-						throw new UnsupportedOperationException();
-					}
-
-					@Override
-					public Timespan power(Timespan value, Timespan exponent) {
-						throw new UnsupportedOperationException();
-					}
-				}));
+				}).serializer(new YggdrasilSerializer<>()));
 
 		// TODO remove
 		Classes.registerClass(new ClassInfo<>(Timeperiod.class, "timeperiod")
@@ -419,72 +335,48 @@ public class SkriptClasses {
 					public String toVariableNameString(final Timeperiod o) {
 						return "timeperiod:" + o.start + "-" + o.end;
 					}
-				}).serializer(new YggdrasilSerializer<Timeperiod>() {
-//						return t.start + "-" + t.end;
-					@Override
-					@Nullable
-					public Timeperiod deserialize(final String s) {
-						final String[] split = s.split("-");
-						if (split.length != 2)
-							return null;
-						try {
-							return new Timeperiod(Integer.parseInt(split[0]), Integer.parseInt(split[1]));
-						} catch (final NumberFormatException e) {
-							return null;
-						}
-					}
-				}));
+				}).serializer(new YggdrasilSerializer<>()));
 
 		Classes.registerClass(new ClassInfo<>(Date.class, "date")
 				.user("dates?")
 				.name("Date")
-				.description("A date is a certain point in the real world's time which can currently only be obtained with <a href='../expressions.html#ExprNow'>now</a>.",
+				.description("A date is a certain point in the real world's time which can be obtained with <a href='./expressions.html#ExprNow'>now expression</a>, <a href='./expressions.html#ExprUnixDate'>unix date expression</a> and <a href='./functions.html#date'>date function</a>.",
 						"See <a href='#time'>time</a> and <a href='#timespan'>timespan</a> for the other time types of Skript.")
 				.usage("")
 				.examples("set {_yesterday} to now",
 						"subtract a day from {_yesterday}",
 						"# now {_yesterday} represents the date 24 hours before now")
 				.since("1.4")
-				.serializer(new YggdrasilSerializer<Date>() {
-//						return "" + d.getTimestamp();
+				.serializer(new Serializer<Date>() {
+
 					@Override
-					@Nullable
-					public Date deserialize(final String s) {
-						try {
-							return new Date(Long.parseLong(s));
-						} catch (final NumberFormatException e) {
-							return null;
-						}
+					public Fields serialize(Date date) {
+						Fields fields = new Fields();
+						fields.putPrimitive("time", date.getTime());
+						return fields;
 					}
-				}).math(Timespan.class, new Arithmetic<Date, Timespan>() {
+
+
 					@Override
-					public Timespan difference(final Date first, final Date second) {
-						return first.difference(second);
+					protected Date deserialize(Fields fields)
+						throws StreamCorruptedException {
+						long time = fields.getPrimitive("time", long.class);
+						return new Date(time);
 					}
 
 					@Override
-					public Date add(final Date value, final Timespan difference) {
-						return new Date(value.getTimestamp() + difference.getMilliSeconds());
+					public void deserialize(Date date, Fields fields) {
+						throw new IllegalStateException("Cannot deserialize to an existing date object.");
 					}
 
 					@Override
-					public Date subtract(final Date value, final Timespan difference) {
-						return new Date(value.getTimestamp() - difference.getMilliSeconds());
+					public boolean mustSyncDeserialization() {
+						return false;
 					}
 
 					@Override
-					public Date multiply(Date value, Timespan multiplier) {
-						throw new UnsupportedOperationException();
-					}
-
-					@Override
-					public Date divide(Date value, Timespan divider) {
-						throw new UnsupportedOperationException();
-					}
-
-					@Override
-					public Date power(Date value, Timespan exponent) {
-						throw new UnsupportedOperationException();
+					protected boolean canBeInstantiated() {
+						return false;
 					}
 				}));
 
@@ -494,7 +386,7 @@ public class SkriptClasses {
 				.description("A direction, e.g. north, east, behind, 5 south east, 1.3 meters to the right, etc.",
 						"<a href='#location'>Locations</a> and some <a href='#block'>blocks</a> also have a direction, but without a length.",
 						"Please note that directions have changed extensively in the betas and might not work perfectly. They can also not be used as command arguments.")
-				.usage("see <a href='../expressions.html#ExprDirection'>direction (expression)</a>")
+				.usage("see <a href='./expressions.html#ExprDirection'>direction (expression)</a>")
 				.examples("set the block below the victim to a chest",
 						"loop blocks from the block infront of the player to the block 10 below the player:",
 						"	set the block behind the loop-block to water")
@@ -522,29 +414,21 @@ public class SkriptClasses {
 						return o.toString();
 					}
 				})
-				.serializer(new YggdrasilSerializer<Direction>() {
-//						return o.serialize();
-					@Override
-					@Deprecated
-					@Nullable
-					public Direction deserialize(final String s) {
-						return Direction.deserialize(s);
-					}
-				}));
+				.serializer(new YggdrasilSerializer<>()));
 
 		Classes.registerClass(new ClassInfo<>(Slot.class, "slot")
 				.user("(inventory )?slots?")
-				.name("Inventory Slot")
+				.name("Slot")
 				.description("Represents a single slot of an <a href='#inventory'>inventory</a>. " +
-						"Notable slots are the <a href='../expressions.html#ExprArmorSlot'>armour slots</a> and <a href='../expressions/#ExprFurnaceSlot'>furnace slots</a>. ",
+						"Notable slots are the <a href='./expressions.html#ExprArmorSlot'>armour slots</a> and <a href='./expressions/#ExprFurnaceSlot'>furnace slots</a>. ",
 						"The most important property that distinguishes a slot from an <a href='#itemstack'>item</a> is its ability to be changed, e.g. it can be set, deleted, enchanted, etc. " +
 								"(Some item expressions can be changed as well, e.g. items stored in variables. " +
 								"For that matter: slots are never saved to variables, only the items they represent at the time when the variable is set).",
-						"Please note that <a href='../expressions.html#ExprTool'>tool</a> can be regarded a slot, but it can actually change it's position, i.e. doesn't represent always the same slot.")
+						"Please note that <a href='./expressions.html#ExprTool'>tool</a> can be regarded a slot, but it can actually change it's position, i.e. doesn't represent always the same slot.")
 				.usage("")
 				.examples("set tool of player to dirt",
 						"delete helmet of the victim",
-						"set the colour of the player's tool to green",
+						"set the color of the player's tool to green",
 						"enchant the player's chestplate with projectile protection 5")
 				.since("")
 				.defaultExpression(new EventValueExpression<>(Slot.class))
@@ -651,13 +535,14 @@ public class SkriptClasses {
 
 		Classes.registerClass(new ClassInfo<>(Color.class, "color")
 				.user("colou?rs?")
-				.name("Colour")
-				.description("Wool, dye and chat colours.")
+				.name("Color")
+				.description("Wool, dye and chat colors.")
 				.usage("black, dark grey/dark gray, grey/light grey/gray/light gray/silver, white, blue/dark blue, cyan/aqua/dark cyan/dark aqua, light blue/light cyan/light aqua, green/dark green, light green/lime/lime green, yellow/light yellow, orange/gold/dark yellow, red/dark red, pink/light red, purple/dark purple, magenta/light purple, brown/indigo")
 				.examples("color of the sheep is red or black",
-						"set the colour of the block to green",
+						"set the color of the block to green",
 						"message \"You're holding a <%color of tool%>%color of tool%<reset> wool block\"")
 				.since("")
+				.supplier(SkriptColor.values())
 				.parser(new Parser<Color>() {
 					@Override
 					@Nullable
@@ -682,7 +567,7 @@ public class SkriptClasses {
 		Classes.registerClass(new ClassInfo<>(StructureType.class, "structuretype")
 				.user("tree ?types?", "trees?")
 				.name("Tree Type")
-				.description("A tree type represents a tree species or a huge mushroom species. These can be generated in a world with the <a href='../effects.html#EffTree'>generate tree</a> effect.")
+				.description("A tree type represents a tree species or a huge mushroom species. These can be generated in a world with the <a href='./effects.html#EffTree'>generate tree</a> effect.")
 				.usage("[any] &lt;general tree/mushroom type&gt;, e.g. tree/any jungle tree/etc.", "&lt;specific tree/mushroom species&gt;, e.g. red mushroom/small jungle tree/big regular tree/etc.")
 				.examples("grow any regular tree at the block",
 						"grow a huge red mushroom above the block")
@@ -702,7 +587,7 @@ public class SkriptClasses {
 
 					@Override
 					public String toVariableNameString(final StructureType o) {
-						return "" + o.name().toLowerCase();
+						return "" + o.name().toLowerCase(Locale.ENGLISH);
 					}
 				}).serializer(new EnumSerializer<>(StructureType.class)));
 
@@ -731,36 +616,19 @@ public class SkriptClasses {
 						return o.toString();
 					}
 				})
-				.serializer(new YggdrasilSerializer<EnchantmentType>() {
-//						return o.getType().getId() + ":" + o.getLevel();
-					@Override
-					@Nullable
-					public EnchantmentType deserialize(final String s) {
-						final String[] split = s.split(":");
-						if (split.length != 2)
-							return null;
-						try {
-							final Enchantment ench = EnchantmentUtils.getByKey(split[0]);
-							if (ench == null)
-								return null;
-							return new EnchantmentType(ench, Integer.parseInt(split[1]));
-						} catch (final NumberFormatException e) {
-							return null;
-						}
-					}
-				}));
+				.serializer(new YggdrasilSerializer<>()));
 
 		Classes.registerClass(new ClassInfo<>(Experience.class, "experience")
 				.user("experience ?(points?)?")
 				.name("Experience")
 				.description("Experience points. Please note that Bukkit only allows to give XP, but not remove XP from players. " +
-						"You can however change a player's <a href='../expressions.html#ExprLevel'>level</a> and <a href='../expressions/#ExprLevelProgress'>level progress</a> freely.")
+						"You can however change a player's <a href='./expressions.html#ExprLevel'>level</a> and <a href='./expressions/#ExprLevelProgress'>level progress</a> freely.")
 				.usage("[&lt;number&gt;] ([e]xp|experience [point[s]])")
 				.examples("give 10 xp to the player")
 				.since("2.0")
 				.parser(new Parser<Experience>() {
 					private final RegexMessage pattern = new RegexMessage("types.experience.pattern", Pattern.CASE_INSENSITIVE);
-					
+
 					@Override
 					@Nullable
 					public Experience parse(String s, final ParseContext context) {
@@ -773,30 +641,19 @@ public class SkriptClasses {
 							return new Experience(xp);
 						return null;
 					}
-					
+
 					@Override
 					public String toString(final Experience xp, final int flags) {
 						return xp.toString();
 					}
-					
+
 					@Override
 					public String toVariableNameString(final Experience xp) {
 						return "" + xp.getXP();
 					}
 
 				})
-				.serializer(new YggdrasilSerializer<Experience>() {
-//						return "" + xp;
-					@Override
-					@Nullable
-					public Experience deserialize(final String s) {
-						try {
-							return new Experience(Integer.parseInt(s));
-						} catch (final NumberFormatException e) {
-							return null;
-						}
-					}
-				}));
+				.serializer(new YggdrasilSerializer<>()));
 
 		Classes.registerClass(new ClassInfo<>(VisualEffect.class, "visualeffect")
 				.name("Visual Effect")
@@ -806,6 +663,7 @@ public class SkriptClasses {
 				.usage(VisualEffects.getAllNames())
 				.since("2.1")
 				.user("(visual|particle) effects?")
+				.after("itemtype")
 				.parser(new Parser<VisualEffect>() {
 					@Override
 					@Nullable
@@ -825,7 +683,7 @@ public class SkriptClasses {
 
 				})
 				.serializer(new YggdrasilSerializer<>()));
-		
+
 		Classes.registerClass(new ClassInfo<>(GameruleValue.class, "gamerulevalue")
 				.user("gamerule values?")
 				.name("Gamerule Value")
@@ -835,6 +693,229 @@ public class SkriptClasses {
 				.since("2.5")
 				.serializer(new YggdrasilSerializer<GameruleValue>())
 		);
+
+		Classes.registerClass(new ClassInfo<>(SkriptQueue.class, "queue")
+				.user("queues?")
+				.name("Queue")
+				.description("A queued list of values. Entries are removed from a queue when they are queried.")
+				.examples(
+					"set {queue} to a new queue",
+					"add \"hello\" to {queue}",
+					"broadcast the 1st element of {queue}"
+				)
+				.since("2.10")
+				.changer(new Changer<>() {
+					@Override
+					public Class<?> @Nullable [] acceptChange(ChangeMode mode) {
+						return switch (mode) {
+							case ADD, REMOVE, DELETE -> new Class[] {Object.class};
+							case RESET -> new Class[0];
+							default -> null;
+						};
+					}
+
+					@Override
+					public void change(SkriptQueue[] what, Object @Nullable [] delta, ChangeMode mode) {
+						for (SkriptQueue queue : what) {
+							switch (mode) {
+								case RESET, DELETE -> queue.clear();
+								case ADD -> {
+									assert delta != null;
+									queue.addAll(Arrays.asList(delta));
+								}
+								case REMOVE -> {
+									assert delta != null;
+									queue.removeAll(Arrays.asList(delta));
+								}
+							}
+						}
+					}
+				})
+				.serializer(new YggdrasilSerializer<>())
+		);
+
+
+		Classes.registerClass(new ClassInfo<>(Config.class, "config")
+			.user("configs?")
+			.name("Config")
+			.description("A configuration (or code) loaded by Skript, such as the config.sk or aliases.",
+				"Configs can be reloaded or navigated to find options.")
+			.usage("")
+			.examples("the skript config")
+			.since("2.10")
+			.parser(new Parser<Config>() {
+
+				@Override
+				public boolean canParse(ParseContext context) {
+					return false;
+				}
+
+				@Override
+				public String toString(Config config, int flags) {
+					@Nullable File file = config.getFile();
+					if (file == null)
+						return config.getFileName();
+					return Skript.getInstance().getDataFolder().getAbsoluteFile().toPath()
+						.relativize(file.toPath().toAbsolutePath()).toString();
+				}
+
+				@Override
+				public String toVariableNameString(Config config) {
+					return this.toString(config, 0);
+				}
+			}));
+
+		Classes.registerClass(new ClassInfo<>(Node.class, "node")
+			.user("nodes?")
+			.name("Node")
+			.description("A node (entry) from a script config file.",
+				"This may have navigable children.")
+			.usage("")
+			.examples("the current script")
+			.since("2.10")
+			.parser(new Parser<Node>() {
+
+				@Override
+				public boolean canParse(ParseContext context) {
+					return false;
+				}
+
+				@Override
+				public String toString(Node node, int flags) {
+					return node.getPath();
+				}
+
+				@Override
+				public String toVariableNameString(Node node) {
+					return this.toString(node, 0);
+				}
+
+			}));
+
+		Classes.registerClass(new ClassInfo<>(Script.class, "script")
+				.user("scripts?")
+				.name("Script")
+				.description("A script loaded by Skript.",
+					"Disabled scripts will report as being empty since their content has not been loaded.")
+				.usage("")
+				.examples("the current script")
+				.since("2.10")
+				.parser(new Parser<Script>() {
+					final Path path = Skript.getInstance().getScriptsFolder().getAbsoluteFile().toPath();
+
+					@Override
+					public boolean canParse(final ParseContext context) {
+						return switch (context) {
+							case PARSE, COMMAND -> true;
+							default -> false;
+						};
+					}
+
+					@Override
+					@Nullable
+					public Script parse(final String name, final ParseContext context) {
+						return switch (context) {
+							case PARSE, COMMAND -> {
+								@Nullable File file = ScriptLoader.getScriptFromName(name);
+								if (file == null || !file.isFile())
+									yield null;
+								yield ScriptLoader.getScript(file);
+							}
+							default -> null;
+						};
+					}
+
+					@Override
+					public String toString(final Script script, final int flags) {
+						@Nullable File file = script.getConfig().getFile();
+						if (file == null)
+							return script.getConfig().getFileName();
+						return path.relativize(file.toPath().toAbsolutePath()).toString();
+					}
+					@Override
+					public String toVariableNameString(final Script script) {
+						return this.toString(script, 0);
+					}
+				}));
+
+		Classes.registerClass(new ClassInfo<>(Executable.class, "executable")
+			.user("executables?")
+			.name("Executable")
+			.description("Something that can be executed (run) and may accept arguments, e.g. a function.",
+					"This may also return a result.")
+			.examples("run {_function} with arguments 1 and true")
+			.since("2.10"));
+
+		Classes.registerClass(new ClassInfo<>(DynamicFunctionReference.class, "function")
+			.user("functions?")
+			.name("Function")
+			.description("A function loaded by Skript.",
+					"This can be executed (with arguments) and may return a result.")
+			.examples("run {_function} with arguments 1 and true",
+					"set {_result} to the result of {_function}")
+			.since("2.10")
+			.parser(new Parser<DynamicFunctionReference<?>>() {
+
+				@Override
+				public boolean canParse(final ParseContext context) {
+					return switch (context) {
+						case PARSE, COMMAND -> true;
+						default -> false;
+					};
+				}
+
+				@Override
+				@Nullable
+				public DynamicFunctionReference<?> parse(final String name, final ParseContext context) {
+					return switch (context) {
+						case PARSE, COMMAND -> DynamicFunctionReference.parseFunction(name);
+						default -> null;
+					};
+				}
+
+				@Override
+				public String toString(DynamicFunctionReference<?> function, final int flags) {
+					return function.toString();
+				}
+
+				@Override
+				public String toVariableNameString(DynamicFunctionReference<?> function) {
+					return this.toString(function, 0);
+				}
+			}));
+
+		Classes.registerClass(new AnyInfo<>(AnyNamed.class, "named")
+				.name("Any Named Thing")
+				.description("Something that has a name (e.g. an item).")
+				.usage("")
+				.examples("{thing}'s name")
+				.since("2.10")
+		);
+
+		Classes.registerClass(new AnyInfo<>(AnyAmount.class, "numbered")
+				.name("Any Numbered/Sized Thing")
+				.description("Something that has an amount or size.")
+				.usage("")
+				.examples("the size of {thing}", "the amount of {thing}")
+				.since("2.10")
+		);
+
+		Classes.registerClass(new AnyInfo<>(AnyValued.class, "valued")
+			.name("Any Valued Thing")
+			.description("Something that has a value.")
+			.usage("")
+			.examples("the text of {node}")
+			.since("2.10")
+		);
+
+		Classes.registerClass(new AnyInfo<>(AnyContains.class, "containing")
+				.user("any container")
+				.name("Anything with Contents")
+				.description("Something that contains other things.")
+				.usage("")
+				.examples("{a} contains {b}")
+				.since("2.10")
+		);
 	}
-	
+
 }

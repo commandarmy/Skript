@@ -1,40 +1,24 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.bukkitutil;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.entity.EntityData;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import org.bukkit.Location;
 import org.bukkit.entity.*;
+import org.jetbrains.annotations.ApiStatus.ScheduledForRemoval;
 
 /**
  * Utility class for quick {@link Entity} methods
  */
 public class EntityUtils {
-	
+
 	private static final boolean HAS_PIGLINS = Skript.classExists("org.bukkit.entity.Piglin");
 
 	/**
 	 * Cache Skript EntityData -> Bukkit EntityType
 	 */
-	private static final BiMap<EntityData, EntityType> SPAWNER_TYPES = HashBiMap.create();
+	private static final BiMap<EntityData<?>, EntityType> SPAWNER_TYPES = HashBiMap.create();
 
 	static {
 		for (EntityType e : EntityType.values()) {
@@ -43,7 +27,7 @@ public class EntityUtils {
 				SPAWNER_TYPES.put(EntityData.fromClass(c), e);
 		}
 	}
-	
+
 	/**
 	 * Check if an entity is ageable.
 	 * Some entities, such as zombies, do not have an age but can be a baby/adult.
@@ -56,7 +40,7 @@ public class EntityUtils {
 			return true;
 		return HAS_PIGLINS && (entity instanceof Piglin || entity instanceof Zoglin);
 	}
-	
+
 	/**
 	 * Get the age of an ageable entity.
 	 * Entities such as zombies do not have an age, this will return -1 if baby, 0 if adult.
@@ -77,7 +61,7 @@ public class EntityUtils {
 		}
 		return 0;
 	}
-	
+
 	/**
 	 * Set the age of an entity.
 	 * Entities such as zombies do not have an age, setting below 0 will make them a baby otherwise adult.
@@ -97,7 +81,7 @@ public class EntityUtils {
 				((Zoglin) entity).setBaby(age < 0);
 		}
 	}
-	
+
 	/**
 	 * Quick method for making an entity a baby.
 	 * Ageable entities (such as sheep or pigs) will set their default baby age to -24000.
@@ -107,7 +91,7 @@ public class EntityUtils {
 	public static void setBaby(Entity entity) {
 		setAge(entity, -24000);
 	}
-	
+
 	/**
 	 * Quick method for making an entity an adult.
 	 *
@@ -116,7 +100,7 @@ public class EntityUtils {
 	public static void setAdult(Entity entity) {
 		setAge(entity, 0);
 	}
-	
+
 	/**
 	 * Quick method to check if entity is an adult.
 	 *
@@ -132,7 +116,7 @@ public class EntityUtils {
 	 * @param e Skript's EntityData
 	 * @return Bukkit's EntityType
 	 */
-	public static EntityType toBukkitEntityType(EntityData e) {
+	public static EntityType toBukkitEntityType(EntityData<?> e) {
 		return SPAWNER_TYPES.get(EntityData.fromClass(e.getType())); // Fix Comparison Issues
 	}
 
@@ -141,8 +125,24 @@ public class EntityUtils {
 	 * @param e Bukkit's EntityType
 	 * @return Skript's EntityData
 	 */
-	public static EntityData toSkriptEntityData(EntityType e) {
+	public static EntityData<?> toSkriptEntityData(EntityType e) {
 		return SPAWNER_TYPES.inverse().get(e);
 	}
-	
+
+	/**
+	 * Teleports the given entity to the given location.
+	 * Teleports to the given location in the entity's world if the location's world is null.
+	 * @deprecated this method is only used by EffTeleport, and with the recent additions of TeleportFlag, this method should be moved within that effect.
+	 */
+	@Deprecated
+	@ScheduledForRemoval
+	public static void teleport(Entity entity, Location location) {
+		if (location.getWorld() == null) {
+			location = location.clone();
+			location.setWorld(entity.getWorld());
+		}
+
+		entity.teleport(location);
+	}
+
 }

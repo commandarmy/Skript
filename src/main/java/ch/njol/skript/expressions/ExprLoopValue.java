@@ -1,26 +1,8 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
 
 import ch.njol.skript.Skript;
-import ch.njol.skript.classes.Converter;
-import ch.njol.skript.classes.Converter.ConverterInfo;
+import org.skriptlang.skript.lang.converter.Converter;
+import org.skriptlang.skript.lang.converter.ConverterInfo;
 import ch.njol.skript.doc.Description;
 import ch.njol.skript.doc.Examples;
 import ch.njol.skript.doc.Name;
@@ -31,14 +13,13 @@ import ch.njol.skript.lang.SkriptParser.ParseResult;
 import ch.njol.skript.lang.Variable;
 import ch.njol.skript.lang.util.ConvertedExpression;
 import ch.njol.skript.lang.util.SimpleExpression;
-import ch.njol.skript.log.ErrorQuality;
 import ch.njol.skript.registrations.Classes;
-import ch.njol.skript.registrations.Converters;
+import org.skriptlang.skript.lang.converter.Converters;
 import ch.njol.skript.sections.SecLoop;
 import ch.njol.skript.util.Utils;
 import ch.njol.util.Kleenean;
 import org.bukkit.event.Event;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Array;
 import java.util.Map.Entry;
@@ -47,60 +28,99 @@ import java.util.regex.Pattern;
 
 /**
  * Used to access a loop's current value.
- * <p>
- * TODO expression to get the current # of execution (e.g. loop-index/number/count/etc (not number though));
- * 
- * @author Peter Güttinger
  */
 @Name("Loop value")
-@Description("The currently looped value.")
-@Examples({"# countdown:",
-		"loop 10 times:",
-		"	message \"%11 - loop-number%\"",
-		"	wait a second",
-		"# generate a 10x10 floor made of randomly coloured wool below the player:",
-		"loop blocks from the block below the player to the block 10 east of the block below the player:",
-		"	loop blocks from the loop-block to the block 10 north of the loop-block:",
-		"		set loop-block-2 to any wool"})
-@Since("1.0")
+@Description("Returns the previous, current, or next looped value.")
+@Examples({
+	"# Countdown",
+	"loop 10 times:",
+		"\tmessage \"%11 - loop-number%\"",
+		"\twait a second",
+	"",
+	"# Generate a 10x10 floor made of randomly colored wool below the player",
+	"loop blocks from the block below the player to the block 10 east of the block below the player:",
+		"\tloop blocks from the loop-block to the block 10 north of the loop-block:",
+			"\t\tset loop-block-2 to any wool",
+	"",
+	"loop {top-balances::*}:",
+		"\tloop-iteration <= 10",
+		"\tsend \"#%loop-iteration% %loop-index% has $%loop-value%\"",
+	"",
+	"loop shuffled (integers between 0 and 8):",
+		"\tif all:",
+			"\t\tprevious loop-value = 1",
+			"\t\tloop-value = 4",
+			"\t\tnext loop-value = 8",
+		"\tthen:",
+			"\t\t kill all players"
+})
+@Since("1.0, 2.8.0 (loop-counter), 2.10 (previous, next)")
 public class ExprLoopValue extends SimpleExpression<Object> {
+
+	enum LoopState {
+		CURRENT("[current]"),
+		NEXT("next"),
+		PREVIOUS("previous");
+
+		private String pattern;
+
+		LoopState(String pattern) {
+			this.pattern = pattern;
+		}
+	}
+
+	private static final LoopState[] loopStates = LoopState.values();
+
 	static {
-		Skript.registerExpression(ExprLoopValue.class, Object.class, ExpressionType.SIMPLE, "[the] loop-<.+>");
+		String[] patterns = new String[loopStates.length];
+		for (LoopState state : loopStates) {
+			patterns[state.ordinal()] = "[the] " + state.pattern + " loop-<.+>";
+		}
+		Skript.registerExpression(ExprLoopValue.class, Object.class, ExpressionType.SIMPLE, patterns);
 	}
 	
-	@SuppressWarnings("null")
+	@SuppressWarnings("NotNullFieldNotInitialized")
 	private String name;
 	
-	@SuppressWarnings("null")
+	@SuppressWarnings("NotNullFieldNotInitialized")
 	private SecLoop loop;
 	
 	// whether this loops a variable
 	boolean isVariableLoop = false;
 	// if this loops a variable and isIndex is true, return the index of the variable instead of the value
 	boolean isIndex = false;
-	
+
+	private LoopState selectedState;
+
+	private static final Pattern LOOP_PATTERN = Pattern.compile("^(.+)-(\\d+)$");
+
 	@Override
 	public boolean init(Expression<?>[] vars, int matchedPattern, Kleenean isDelayed, ParseResult parser) {
+		selectedState = loopStates[matchedPattern];
 		name = parser.expr;
 		String s = "" + parser.regexes.get(0).group();
 		int i = -1;
-		Matcher m = Pattern.compile("^(.+)-(\\d+)$").matcher(s);
+		Matcher m = LOOP_PATTERN.matcher(s);
 		if (m.matches()) {
 			s = "" + m.group(1);
 			i = Utils.parseInt("" + m.group(2));
 		}
+
+		if ("counter".equalsIgnoreCase(s) || "iteration".equalsIgnoreCase(s)) // ExprLoopIteration - in case of classinfo conflicts
+			return false;
+
 		Class<?> c = Classes.getClassFromUserInput(s);
 		int j = 1;
 		SecLoop loop = null;
 
 		for (SecLoop l : getParser().getCurrentSections(SecLoop.class)) {
-			if ((c != null && c.isAssignableFrom(l.getLoopedExpression().getReturnType())) || "value".equals(s) || l.getLoopedExpression().isLoopOf(s)) {
+			if ((c != null && c.isAssignableFrom(l.getLoopedExpression().getReturnType())) || "value".equalsIgnoreCase(s) || l.getLoopedExpression().isLoopOf(s)) {
 				if (j < i) {
 					j++;
 					continue;
 				}
 				if (loop != null) {
-					Skript.error("There are multiple loops that match loop-" + s + ". Use loop-" + s + "-1/2/3/etc. to specify which loop's value you want.", ErrorQuality.SEMANTIC_ERROR);
+					Skript.error("There are multiple loops that match loop-" + s + ". Use loop-" + s + "-1/2/3/etc. to specify which loop's value you want.");
 					return false;
 				}
 				loop = l;
@@ -109,7 +129,11 @@ public class ExprLoopValue extends SimpleExpression<Object> {
 			}
 		}
 		if (loop == null) {
-			Skript.error("There's no loop that matches 'loop-" + s + "'", ErrorQuality.SEMANTIC_ERROR);
+			Skript.error("There's no loop that matches 'loop-" + s + "'");
+			return false;
+		}
+		if (selectedState == LoopState.NEXT && !loop.supportsPeeking()) {
+			Skript.error("The expression '" + loop.getExpression().toString() + "' does not allow the usage of 'next loop-" + s + "'.");
 			return false;
 		}
 		if (loop.getLoopedExpression() instanceof Variable) {
@@ -126,9 +150,9 @@ public class ExprLoopValue extends SimpleExpression<Object> {
 		return true;
 	}
 	
-	@SuppressWarnings("unchecked")
 	@Override
 	@Nullable
+	@SuppressWarnings("unchecked")
 	protected <R> ConvertedExpression<Object, ? extends R> getConvertedExpr(Class<R>... to) {
 		if (isVariableLoop && !isIndex) {
 			Class<R> superType = (Class<R>) Utils.getSuperType(to);
@@ -153,34 +177,52 @@ public class ExprLoopValue extends SimpleExpression<Object> {
 	}
 	
 	@Override
-	@Nullable
-	protected Object[] get(Event e) {
+	protected Object @Nullable [] get(Event event) {
 		if (isVariableLoop) {
-			@SuppressWarnings("unchecked") Entry<String, Object> current = (Entry<String, Object>) loop.getCurrent(e);
-			if (current == null)
+			//noinspection unchecked
+			Entry<String, Object> value = (Entry<String, Object>) switch (selectedState) {
+				case CURRENT ->  loop.getCurrent(event);
+				case NEXT -> loop.getNext(event);
+				case PREVIOUS -> loop.getPrevious(event);
+			};
+			if (value == null)
 				return null;
 			if (isIndex)
-				return new String[] {current.getKey()};
+				return new String[] {value.getKey()};
 			Object[] one = (Object[]) Array.newInstance(getReturnType(), 1);
-			one[0] = current.getValue();
+			one[0] = value.getValue();
 			return one;
 		}
+
 		Object[] one = (Object[]) Array.newInstance(getReturnType(), 1);
-		one[0] = loop.getCurrent(e);
+		one[0] = switch (selectedState) {
+			case CURRENT -> loop.getCurrent(event);
+			case NEXT -> loop.getNext(event);
+			case PREVIOUS -> loop.getPrevious(event);
+		};
 		return one;
 	}
 	
 	@Override
-	public String toString(@Nullable Event e, boolean debug) {
-		if (e == null)
+	public String toString(@Nullable Event event, boolean debug) {
+		if (event == null)
 			return name;
 		if (isVariableLoop) {
-			@SuppressWarnings("unchecked") Entry<String, Object> current = (Entry<String, Object>) loop.getCurrent(e);
-			if (current == null)
+			//noinspection unchecked
+			Entry<String, Object> value = (Entry<String, Object>) switch (selectedState) {
+				case CURRENT ->  loop.getCurrent(event);
+				case NEXT -> loop.getNext(event);
+				case PREVIOUS -> loop.getPrevious(event);
+			};
+			if (value == null)
 				return Classes.getDebugMessage(null);
-			return isIndex ? "\"" + current.getKey() + "\"" : Classes.getDebugMessage(current.getValue());
+			return isIndex ? "\"" + value.getKey() + "\"" : Classes.getDebugMessage(value.getValue());
 		}
-		return Classes.getDebugMessage(loop.getCurrent(e));
+		return Classes.getDebugMessage(switch (selectedState) {
+			case CURRENT -> loop.getCurrent(event);
+			case NEXT -> loop.getNext(event);
+			case PREVIOUS -> loop.getPrevious(event);
+		});
 	}
 	
 }

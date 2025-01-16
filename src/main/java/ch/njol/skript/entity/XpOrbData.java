@@ -1,34 +1,15 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.entity;
+
+import java.util.function.Consumer;
 
 import org.bukkit.Location;
 import org.bukkit.entity.ExperienceOrb;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.lang.Literal;
 import ch.njol.skript.lang.SkriptParser.ParseResult;
 import ch.njol.skript.localization.ArgsMessage;
 
-/**
- * @author Peter Güttinger
- */
 public class XpOrbData extends EntityData<ExperienceOrb> {
 	static {
 		EntityData.register(XpOrbData.class, "xporb", ExperienceOrb.class, "xp-orb");
@@ -66,20 +47,20 @@ public class XpOrbData extends EntityData<ExperienceOrb> {
 	@Override
 	public void set(final ExperienceOrb entity) {
 		if (xp != -1)
-			entity.setExperience(xp);
+			entity.setExperience(xp + entity.getExperience());
 	}
-	
+
 	@Override
 	@Nullable
-	public ExperienceOrb spawn(final Location loc) {
-		final ExperienceOrb orb = super.spawn(loc);
+	public ExperienceOrb spawn(Location loc, @Nullable Consumer<ExperienceOrb> consumer) {
+		ExperienceOrb orb = super.spawn(loc, consumer);
 		if (orb == null)
 			return null;
 		if (xp == -1)
-			orb.setExperience(1);
+			orb.setExperience(1 + orb.getExperience());
 		return orb;
 	}
-	
+
 	private final static ArgsMessage format = new ArgsMessage("entities.xp-orb.format");
 	
 	@Override

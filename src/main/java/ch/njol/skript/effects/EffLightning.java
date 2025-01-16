@@ -1,26 +1,9 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.effects;
 
 import org.bukkit.Location;
+import org.bukkit.entity.Entity;
 import org.bukkit.event.Event;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.doc.Description;
@@ -52,6 +35,9 @@ public class EffLightning extends Effect {
 	
 	private boolean effectOnly;
 	
+	@Nullable
+	public static Entity lastSpawned = null;
+	
 	@SuppressWarnings({"unchecked", "null"})
 	@Override
 	public boolean init(final Expression<?>[] exprs, final int matchedPattern, final Kleenean isDelayed, final ParseResult parseResult) {
@@ -64,9 +50,9 @@ public class EffLightning extends Effect {
 	protected void execute(final Event e) {
 		for (final Location l : locations.getArray(e)) {
 			if (effectOnly)
-				l.getWorld().strikeLightningEffect(l);
+				lastSpawned = l.getWorld().strikeLightningEffect(l);
 			else
-				l.getWorld().strikeLightning(l);
+				lastSpawned = l.getWorld().strikeLightning(l);
 		}
 	}
 	

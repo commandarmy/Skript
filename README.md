@@ -1,5 +1,9 @@
-# Skript [![Build Status](https://travis-ci.org/SkriptLang/Skript.svg?branch=master)](https://travis-ci.org/SkriptLang/Skript)
-Skript is a plugin for Paper/Spigot, which allows server owners and other people
+![Skript Language](.github/assets/Cover.jpg)
+
+---
+
+# Skript
+**Skript** is a Minecraft plugin for Paper/Spigot, which allows server owners and other people
 to modify their servers without learning Java. It can also be useful if you
 *do* know Java; some tasks are quicker to do with Skript, and so it can be used
 for prototyping etc.
@@ -8,27 +12,36 @@ This Github fork of Skript is based on Mirreski's improvements which was built
 on Njol's original Skript.
 
 ## Requirements
-Skript requires **Spigot** to work. You heard it right, Bukkit does *not* work.
+Skript requires **Spigot** to work. You heard it right, **CraftBukkit** does *not* work.
 **Paper**, which is a fork of Spigot, is recommended; it is required for some
 parts of Skript to be available.
 
-Skript supports only the **latest** patch versions of Minecraft 1.9+.
-For example, this means that 1.16.4 is supported, but 1.16.3 is *not*.
+Skript supports only the **latest** patch versions of Minecraft 1.19 and newer.
+For example, this means that 1.19.4 is supported, but 1.19.3 is *not*.
 Testing with all old patch versions is not feasible for us.
 
-Minecraft 1.8 and earlier are not, and will not be supported. New Minecraft
+Minecraft 1.12 and earlier are not, and will not be supported. New Minecraft
 versions will be supported as soon as possible.
 
 ## Download
 You can find the downloads for each version with their release notes in the [releases page](https://github.com/SkriptLang/Skript/releases).
 
+Two major feature updates are expected each year in January and July, with monthly patches occurring in between. For full details, please review our [release model](CLOCKWORK_RELEASE_MODEL.md).
+
 ## Documentation
-Documentation is available [here](https://skriptlang.github.io/Skript) for the
+Documentation is available [here](https://docs.skriptlang.org/) for the
 latest version of Skript.
 
 ## Reporting Issues
 Please see our [contribution guidelines](https://github.com/SkriptLang/Skript/blob/master/.github/contributing.md)
 before reporting issues.
+
+## Help Us Test
+Wanting to help test Skript's new features and releases?
+You can head on over to our [Official Testing Discord](https://discord.gg/ZPsZAg6ygu), and whenever we start testing new features/releases you will be the first to know.
+
+Please note this is not a help Discord.
+If you require assistance with how to use Skript please check out the [Relevant Links](https://github.com/SkriptLang/Skript#relevant-links) section for a list of available resources to assist you.
 
 ## A Note About Add-ons
 We don't support add-ons here, even though some of Skript developers have also
@@ -61,18 +74,19 @@ only used to provide compatibility with old WorldGuard versions.
 
 ### Testing
 Skript has some tests written in Skript. Running them requires a Minecraft
-server, but our build script can fetch it for you. Running tests is easy:
+server, but our build script will create one for you. Running the tests is easy:
 
 ```
-./gradlew (quickTest|skriptTest|skriptTestFull)
+./gradlew (quickTest|skriptTest|skriptTestJava17|skriptTestJava21)
 ```
 
-<code>quickTest</code> runs the test suite on newest supported server.
-<code>skriptTest</code> additionally runs the tests on oldest supported
-server, and on 1.12 (pre-flattening). <code>skriptTestFull</code> runs
-tests on **ALL** supported versions, some of which do not work on Java 9+.
+<code>quickTest</code> runs the test suite on newest supported server version.
+<code>skriptTestJava21</code> (1.20.6+) runs the tests on Java 21 supported versions.
+<code>skriptTestJava17</code> (1.19.4-1.20.4) runs the tests on Java 17 supported versions.
+<code>skriptTest</code> runs the tests on all versions.
+That is, it runs skriptTestJava17, and skriptTestJava21.
 
-By running tests, you agree to Mojang's End User License Agreement.
+By running the tests, you agree to Mojang's End User License Agreement.
 
 ### Importing to Eclipse
 With new Eclipse versions, there is integrated Gradle support, and it actually works now.
@@ -106,13 +120,11 @@ In addition to that, if you are contributing Java code, check our
 If you use Skript as (soft) dependency for your plugin, and use maven or Gradle,
 this is for you.
 
-First, you need to add the JitPack repository at the **END** of all your repositories. Skript is not available in Maven Central.
+First, you need to add the Maven repository at the **END** of all your repositories. Skript is not available in Maven Central.
 ```gradle
 repositories {
-    jcenter()
-    ...
     maven {
-        url 'https://jitpack.io'
+        url 'https://repo.skriptlang.org/releases'
     }
 }
 ```
@@ -121,8 +133,9 @@ Or, if you use Maven:
 ```maven
 <repositories>
     <repository>
-        <id>jitpack.io</id>
-        <url>https://jitpack.io</url>
+        <id>skript-releases</id>
+        <name>Skript Repository</name>
+        <url>https://repo.skriptlang.org/releases</url>
     </repository>
 </repositories>
 ```
@@ -150,7 +163,7 @@ dependencies {
 }
 ```
 
-An example of the version tag would be ```dev37c```.
+An example of the version tag would be ```2.8.5```.
 
 > Note: If Gradle isn't able to resolve Skript's dependencies, just [disable the resolution of transitive dependencies](https://docs.gradle.org/current/userguide/resolution_rules.html#sec:disabling_resolution_transitive_dependencies) for Skript in your project.
 
@@ -160,12 +173,14 @@ Or, if you use Maven:
     <groupId>com.github.SkriptLang</groupId>
     <artifactId>Skript</artifactId>
     <version>[versionTag]</version>
+    <scope>provided</scope>
 </dependency>
 ```
 
 ## Relevant Links
 * [skUnity forums](https://forums.skunity.com)
-* [Add-on releases at skUnity](https://forums.skunity.com/forums/addon-releases)
+* [skUnity addon releases](https://forums.skunity.com/forums/addon-releases)
+* [skUnity Discord invite](https://discord.gg/0l3WlzBPKX7WNjkf)
 * [Skript Chat Discord invite](https://discord.gg/0lx4QhQvwelCZbEX)
 * [Skript Hub](https://skripthub.net)
 * [Original Skript at Bukkit](https://dev.bukkit.org/bukkit-plugins/skript) (inactive)

@@ -1,27 +1,4 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.effects;
-
-import org.bukkit.enchantments.Enchantment;
-import org.bukkit.event.Event;
-import org.bukkit.inventory.ItemStack;
-import org.eclipse.jdt.annotation.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.aliases.ItemType;
@@ -36,6 +13,11 @@ import ch.njol.skript.lang.Expression;
 import ch.njol.skript.lang.SkriptParser.ParseResult;
 import ch.njol.skript.util.EnchantmentType;
 import ch.njol.util.Kleenean;
+import org.bukkit.event.Event;
+import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.function.Function;
 
 /**
  * @author Peter Güttinger
@@ -53,55 +35,48 @@ public class EffEnchant extends Effect {
 	}
 	
 	@SuppressWarnings("null")
-	private Expression<ItemType> item;
+	private Expression<ItemType> items;
 	@Nullable
-	private Expression<EnchantmentType> enchs;
+	private Expression<EnchantmentType> enchantments;
 	
-	@SuppressWarnings({"unchecked", "null"})
 	@Override
-	public boolean init(final Expression<?>[] exprs, final int matchedPattern, final Kleenean isDelayed, final ParseResult parseResult) {
-		item = (Expression<ItemType>) exprs[0];
-		if (!ChangerUtils.acceptsChange(item, ChangeMode.SET, ItemStack.class)) {
-			Skript.error(item + " cannot be changed, thus it cannot be (dis)enchanted");
+	@SuppressWarnings("unchecked")
+	public boolean init(Expression<?>[] exprs, int matchedPattern, Kleenean isDelayed, ParseResult parseResult) {
+		items = (Expression<ItemType>) exprs[0];
+		if (!ChangerUtils.acceptsChange(items, ChangeMode.SET, ItemStack.class)) {
+			Skript.error(items + " cannot be changed, thus it cannot be (dis)enchanted");
 			return false;
 		}
 		if (matchedPattern == 0)
-			enchs = (Expression<EnchantmentType>) exprs[1];
+			enchantments = (Expression<EnchantmentType>) exprs[1];
 		return true;
 	}
 	
 	@Override
-	protected void execute(final Event e) {
-		final ItemType i = item.getSingle(e);
-		if (i == null)
-			return;
-		if (enchs != null) {
-			final EnchantmentType[] types = enchs.getArray(e);
+	protected void execute(Event event) {
+		Function<ItemType, ItemType> changeFunction;
+
+		if (enchantments != null) {
+			EnchantmentType[] types = enchantments.getArray(event);
 			if (types.length == 0)
 				return;
-			
-			for (final EnchantmentType type : types) {
-				Enchantment ench = type.getType();
-				assert ench != null;
-				i.addEnchantments(new EnchantmentType(ench, type.getLevel()));
-			}
-			item.change(e, new ItemType[] {i}, ChangeMode.SET);
+			changeFunction = item -> {
+				item.addEnchantments(types);
+				return item;
+			};
 		} else {
-			final EnchantmentType[] types = i.getEnchantmentTypes();
-			if (types == null)
-				return;
-			
-			for (final EnchantmentType ench : types) {
-				assert ench != null;
-				i.removeEnchantments(ench);
-			}
-			item.change(e, new ItemType[] {i}, ChangeMode.SET);
+			changeFunction = item -> {
+				item.clearEnchantments();
+				return item;
+			};
 		}
+
+		this.items.changeInPlace(event, changeFunction);
 	}
-	
+
 	@Override
-	public String toString(final @Nullable Event e, final boolean debug) {
-		return enchs == null ? "disenchant " + item.toString(e, debug) : "enchant " + item.toString(e, debug) + " with " + enchs;
+	public String toString(@Nullable Event event, boolean debug) {
+		return enchantments == null ? "disenchant " + items.toString(event, debug) : "enchant " + items.toString(event, debug) + " with " + enchantments;
 	}
 	
 }

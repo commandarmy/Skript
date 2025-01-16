@@ -1,26 +1,8 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
 
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.Event;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.bukkitutil.HealthUtils;
@@ -67,11 +49,6 @@ public class ExprMaxHealth extends SimplePropertyExpression<LivingEntity, Number
 	@Override
 	@Nullable
 	public Class<?>[] acceptChange(final ChangeMode mode) {
-		if(!Skript.isRunningMinecraft(1, 5, 2)) {
-			Skript.error("The max health of an entity can only be changed in Minecraft 1.6 and later");
-			return null;
-		}
-		
 		if (mode != ChangeMode.DELETE && mode != ChangeMode.REMOVE_ALL)
 			return new Class[] {Number.class};
 		return null;

@@ -1,28 +1,4 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
-
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
-import org.eclipse.jdt.annotation.Nullable;
 
 import ch.njol.skript.aliases.ItemType;
 import ch.njol.skript.doc.Description;
@@ -32,56 +8,75 @@ import ch.njol.skript.doc.Since;
 import ch.njol.skript.entity.EntityData;
 import ch.njol.skript.expressions.base.SimplePropertyExpression;
 import ch.njol.skript.lang.util.ConvertedExpression;
-import ch.njol.skript.registrations.Converters;
+import ch.njol.skript.util.EnchantmentType;
+import org.bukkit.enchantments.Enchantment;
+import org.skriptlang.skript.lang.converter.Converters;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+import org.jetbrains.annotations.Nullable;
 
 @Name("Type of")
-@Description({"Type of a block, item, entity, inventory or potion effect.",
-	"Types of items and blocks are item types similar to them but have amounts",
+@Description({
+	"Type of a block, item, entity, inventory, potion effect or enchantment type.",
+	"Types of items, blocks and block datas are item types similar to them but have amounts",
 	"of one, no display names and, on Minecraft 1.13 and newer versions, are undamaged.",
 	"Types of entities and inventories are entity types and inventory types known to Skript.",
-	"Types of potion effects are potion effect types."})
+	"Types of potion effects are potion effect types.",
+	"Types of enchantment types are enchantments."
+})
 @Examples({"on rightclick on an entity:",
-		"	message \"This is a %type of clicked entity%!\""})
-@Since("1.4, 2.5.2 (potion effect)")
+	"\tmessage \"This is a %type of clicked entity%!\""})
+@Since("1.4, 2.5.2 (potion effect), 2.7 (block datas), 2.10 (enchantment type)")
 public class ExprTypeOf extends SimplePropertyExpression<Object, Object> {
+
 	static {
-		register(ExprTypeOf.class, Object.class, "type", "entitydatas/itemtypes/inventories/potioneffects");
+		register(ExprTypeOf.class, Object.class, "type",
+			"entitydatas/itemtypes/inventories/potioneffects/blockdatas/enchantmenttypes");
 	}
-	
+
 	@Override
 	protected String getPropertyName() {
 		return "type";
 	}
-	
+
 	@Override
 	@Nullable
-	public Object convert(final Object o) {
-		if (o instanceof EntityData) {
-			return ((EntityData<?>) o).getSuperType();
-		} else if (o instanceof ItemType) {
-			return ((ItemType) o).getBaseType();
-		} else if (o instanceof Inventory) {
-			return ((Inventory) o).getType();
-		} else if (o instanceof PotionEffect) {
-			return ((PotionEffect) o).getType();
+	public Object convert(Object object) {
+		if (object instanceof EntityData<?> entityData) {
+			return entityData.getSuperType();
+		} else if (object instanceof ItemType itemType) {
+			return itemType.getBaseType();
+		} else if (object instanceof Inventory inventory) {
+			return inventory.getType();
+		} else if (object instanceof PotionEffect potionEffect) {
+			return potionEffect.getType();
+		} else if (object instanceof BlockData blockData) {
+			return new ItemType(blockData.getMaterial());
+		} else if (object instanceof EnchantmentType enchantmentType) {
+			return enchantmentType.getType();
 		}
 		assert false;
 		return null;
 	}
-	
+
 	@Override
-	public Class<? extends Object> getReturnType() {
+	public Class<?> getReturnType() {
 		Class<?> returnType = getExpr().getReturnType();
 		return EntityData.class.isAssignableFrom(returnType) ? EntityData.class
-				: ItemStack.class.isAssignableFrom(returnType) ? ItemStack.class
-				: PotionEffectType.class.isAssignableFrom(returnType) ? PotionEffectType.class : Object.class;
+			: ItemType.class.isAssignableFrom(returnType) ? ItemType.class
+			: PotionEffectType.class.isAssignableFrom(returnType) ? PotionEffectType.class
+			: EnchantmentType.class.isAssignableFrom(returnType) ? Enchantment.class
+			: BlockData.class.isAssignableFrom(returnType) ? ItemType.class : Object.class;
 	}
-	
+
 	@Override
 	@Nullable
 	protected <R> ConvertedExpression<Object, ? extends R> getConvertedExpr(final Class<R>... to) {
-		if (!Converters.converterExists(EntityData.class, to) && !Converters.converterExists(ItemStack.class, to))
+		if (!Converters.converterExists(EntityData.class, to) && !Converters.converterExists(ItemType.class, to))
 			return null;
 		return super.getConvertedExpr(to);
 	}
+
 }

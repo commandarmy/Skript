@@ -1,21 +1,3 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.util;
 
 import java.util.stream.Stream;
@@ -24,6 +6,7 @@ import ch.njol.skript.lang.Expression;
 import ch.njol.skript.lang.ExpressionList;
 import ch.njol.skript.lang.Literal;
 import ch.njol.skript.lang.UnparsedLiteral;
+import ch.njol.skript.registrations.Classes;
 
 /**
  * A class that contains methods based around
@@ -43,9 +26,16 @@ public class LiteralUtils {
 	@SuppressWarnings("unchecked")
 	public static <T> Expression<T> defendExpression(Expression<?> expr) {
 		if (expr instanceof ExpressionList) {
-			Expression<?>[] expressions = ((ExpressionList) expr).getExpressions();
-			for (int i = 0; i < expressions.length; i++)
-				expressions[i] = LiteralUtils.defendExpression(expressions[i]);
+			Expression<?>[] oldExpressions = ((ExpressionList<?>) expr).getExpressions();
+
+			Expression<? extends T>[] newExpressions = new Expression[oldExpressions.length];
+			Class<?>[] returnTypes = new Class[oldExpressions.length];
+
+			for (int i = 0; i < oldExpressions.length; i++) {
+				newExpressions[i] = LiteralUtils.defendExpression(oldExpressions[i]);
+				returnTypes[i] = newExpressions[i].getReturnType();
+			}
+			return new ExpressionList<>(newExpressions, (Class<T>) Classes.getSuperClassInfo(returnTypes).getC(), returnTypes, expr.getAnd());
 		} else if (expr instanceof UnparsedLiteral) {
 			Literal<?> parsedLiteral = ((UnparsedLiteral) expr).getConvertedExpression(Object.class);
 			return (Expression<T>) (parsedLiteral == null ? expr : parsedLiteral);

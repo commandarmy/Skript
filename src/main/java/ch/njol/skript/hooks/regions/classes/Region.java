@@ -1,21 +1,3 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.hooks.regions.classes;
 
 import ch.njol.skript.Skript;
@@ -26,13 +8,14 @@ import ch.njol.skript.hooks.regions.RegionsPlugin;
 import ch.njol.skript.lang.ParseContext;
 import ch.njol.skript.lang.VariableString;
 import ch.njol.skript.registrations.Classes;
+import org.skriptlang.skript.lang.converter.Converters;
 import ch.njol.yggdrasil.YggdrasilSerializable.YggdrasilExtendedSerializable;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -52,6 +35,7 @@ public abstract class Region implements YggdrasilExtendedSerializable {
 				.after("string", "world", "offlineplayer", "player")
 				.since("2.1")
 				.user("regions?")
+				.requiredPlugins("Supported regions plugin")
 				.parser(new Parser<Region>() {
 					@Override
 					@Nullable
@@ -64,6 +48,7 @@ public abstract class Region implements YggdrasilExtendedSerializable {
 								quoted = true;
 								break;
 							case COMMAND:
+							case PARSE:
 							case CONFIG:
 								quoted = false;
 								break;
@@ -74,23 +59,7 @@ public abstract class Region implements YggdrasilExtendedSerializable {
 						if (!VariableString.isQuotedCorrectly(s, quoted))
 							return null;
 						s = VariableString.unquote(s, quoted);
-						Region r = null;
-						for (final World w : Bukkit.getWorlds()) {
-							@SuppressWarnings("null")
-							final Region r2 = RegionsPlugin.getRegion(w, s);
-							if (r2 == null)
-								continue;
-							if (r != null) {
-								Skript.error("Multiple regions with the name '" + s + "' exist");
-								return null;
-							}
-							r = r2;
-						}
-						if (r == null) {
-							Skript.error("Region '" + s + "' could not be found");
-							return null;
-						}
-						return r;
+						return Region.parse(s, true);
 					}
 					
 					@Override
@@ -109,6 +78,29 @@ public abstract class Region implements YggdrasilExtendedSerializable {
 						return true;
 					}
 				}));
+		Converters.registerConverter(String.class, Region.class, s -> Region.parse(s, false));
+	}
+
+	@Nullable
+	private static Region parse(String s, boolean error) {
+		Region r = null;
+		for (World w : Bukkit.getWorlds()) {
+			Region r2 = RegionsPlugin.getRegion(w, s);
+			if (r2 == null)
+				continue;
+			if (r != null) {
+				if (error)
+					Skript.error("Multiple regions with the name '" + s + "' exist");
+				return null;
+			}
+			r = r2;
+		}
+		if (r == null) {
+			if (error)
+				Skript.error("Region '" + s + "' could not be found");
+			return null;
+		}
+		return r;
 	}
 	
 	public abstract boolean contains(Location l);

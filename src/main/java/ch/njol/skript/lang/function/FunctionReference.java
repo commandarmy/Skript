@@ -1,31 +1,5 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.lang.function;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import ch.njol.skript.lang.UnparsedLiteral;
-import ch.njol.skript.util.LiteralUtils;
-import org.bukkit.event.Event;
-import org.eclipse.jdt.annotation.Nullable;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.SkriptAPIException;
@@ -36,91 +10,117 @@ import ch.njol.skript.lang.SkriptParser;
 import ch.njol.skript.log.RetainingLogHandler;
 import ch.njol.skript.log.SkriptLogger;
 import ch.njol.skript.registrations.Classes;
+import ch.njol.skript.util.Contract;
+import ch.njol.skript.util.LiteralUtils;
 import ch.njol.util.StringUtils;
-import ch.njol.util.coll.CollectionUtils;
+import org.bukkit.event.Event;
+import org.skriptlang.skript.util.Executable;
+import org.jetbrains.annotations.Nullable;
+import org.skriptlang.skript.lang.converter.Converters;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Reference to a Skript function.
  */
-public class FunctionReference<T> {
-	
+public class FunctionReference<T> implements Contract, Executable<Event, T[]> {
+
 	/**
 	 * Name of function that is called, for logging purposes.
 	 */
 	final String functionName;
-	
+
 	/**
 	 * Signature of referenced function. If {@link #validateFunction(boolean)}
 	 * succeeds, this is not null.
 	 */
-	@Nullable
-	private Signature<? extends T> signature;
-	
+	private @Nullable Signature<? extends T> signature;
+  
 	/**
 	 * Actual function reference. Null before the function is called for first
 	 * time.
 	 */
-	@Nullable
-	private Function<? extends T> function;
-	
+	private @Nullable Function<? extends T> function;
+
 	/**
 	 * If all function parameters can be condensed to a single list.
 	 */
 	private boolean singleListParam;
-	
+
 	/**
 	 * Definitions of function parameters.
 	 */
 	private final Expression<?>[] parameters;
-	
+
 	/**
 	 * Indicates if the caller expects this function to return a single value.
 	 * Used for verifying correctness of the function signature.
 	 */
 	private boolean single;
-	
+
 	/**
 	 * Return types expected from this function. Used for verifying correctness
 	 * of the function signature.
 	 */
 	@Nullable
-	private final Class<? extends T>[] returnTypes;
-	
+	final Class<? extends T>[] returnTypes;
+
 	/**
 	 * Node for {@link #validateFunction(boolean)} to use for logging.
 	 */
-	@Nullable
-	private final Node node;
-	
+	private final @Nullable Node node;
+
 	/**
 	 * Script in which this reference is found. Used for function unload
 	 * safety checks.
 	 */
-	@Nullable
-	public final String script;
-	
-	public FunctionReference(String functionName, @Nullable Node node, @Nullable String script, @Nullable Class<? extends T>[] returnTypes, Expression<?>[] params) {
+	public final @Nullable String script;
+
+	/**
+	 * The contract for this function (typically the function reference itself).
+	 * Used to determine input-based return types and simple behaviour.
+	 */
+	private Contract contract;
+
+	public FunctionReference(
+			String functionName, @Nullable Node node, @Nullable String script,
+			@Nullable Class<? extends T>[] returnTypes, Expression<?>[] params
+	) {
 		this.functionName = functionName;
 		this.node = node;
 		this.script = script;
 		this.returnTypes = returnTypes;
-		parameters = params;
+		this.parameters = params;
+		this.contract = this;
 	}
-	
+
+	public boolean validateParameterArity(boolean first) {
+		if (!first && script == null)
+			return false;
+		Signature<?> sign = Functions.getSignature(functionName, script);
+		if (sign == null)
+			return false;
+		// Not enough parameters
+		return parameters.length >= sign.getMinParameters();
+	}
+
 	/**
 	 * Validates this function reference. Prints errors if needed.
 	 * @param first True if this is called while loading a script. False when
 	 * this is called when the function signature changes.
 	 * @return True if validation succeeded.
 	 */
-	@SuppressWarnings("unchecked")
 	public boolean validateFunction(boolean first) {
+		if (!first && script == null)
+			return false;
 		Function<? extends T> previousFunction = function;
 		function = null;
 		SkriptLogger.setNode(node);
 		Skript.debug("Validating function " + functionName);
-		Signature<?> sign = Functions.getSignature(functionName);
-		
+		Signature<?> sign = Functions.getSignature(functionName, script);
+
 		// Check if the requested function exists
 		if (sign == null) {
 			if (first) {
@@ -132,7 +132,7 @@ public class FunctionReference<T> {
 			}
 			return false;
 		}
-		
+
 		// Validate that return types are what caller expects they are
 		Class<? extends T>[] returnTypes = this.returnTypes;
 		if (returnTypes != null) {
@@ -147,7 +147,7 @@ public class FunctionReference<T> {
 				}
 				return false;
 			}
-			if (!CollectionUtils.containsAnySuperclass(returnTypes, rt.getC())) {
+			if (!Converters.converterExists(rt.getC(), returnTypes)) {
 				if (first) {
 					Skript.error("The returned value of the function '" + functionName + "', " + sign.returnType + ", is " + SkriptParser.notOfType(returnTypes) + ".");
 				} else {
@@ -166,7 +166,7 @@ public class FunctionReference<T> {
 				return false;
 			}
 		}
-		
+
 		// Validate parameter count
 		singleListParam = sign.getMaxParameters() == 1 && !sign.getParameter(0).single;
 		if (!singleListParam) { // Check that parameter count is within allowed range
@@ -189,7 +189,7 @@ public class FunctionReference<T> {
 				return false;
 			}
 		}
-		
+
 		// Not enough parameters
 		if (parameters.length < sign.getMinParameters()) {
 			if (first) {
@@ -202,12 +202,13 @@ public class FunctionReference<T> {
 			}
 			return false;
 		}
-		
+
 		// Check parameter types
 		for (int i = 0; i < parameters.length; i++) {
 			Parameter<?> p = sign.parameters[singleListParam ? 0 : i];
 			RetainingLogHandler log = SkriptLogger.startRetainingLog();
 			try {
+				//noinspection unchecked
 				Expression<?> e = parameters[i].getConvertedExpression(p.type.getC());
 				if (e == null) {
 					if (first) {
@@ -224,21 +225,35 @@ public class FunctionReference<T> {
 						function = previousFunction;
 					}
 					return false;
+				} else if (p.single && !e.isSingle()) {
+					if (first) {
+						Skript.error("The " + StringUtils.fancyOrderNumber(i + 1) + " argument given to the function '" + functionName + "' is plural, "
+							+ "but a single argument was expected");
+					} else {
+						Skript.error("The function '" + functionName + "' was redefined with different, incompatible arguments, but is still used in other script(s)."
+							+ " These will continue to use the old version of the function until Skript restarts.");
+						function = previousFunction;
+					}
+					return false;
 				}
 				parameters[i] = e;
 			} finally {
 				log.printLog();
 			}
 		}
-		
+
+		//noinspection unchecked
 		signature = (Signature<? extends T>) sign;
 		sign.calls.add(this);
-		
+
+		Contract contract = sign.getContract();
+		if (contract != null)
+			this.contract = contract;
+
 		return true;
 	}
 
-	@Nullable
-	public Function<? extends T> getFunction() {
+	public @Nullable Function<? extends T> getFunction() {
 		return function;
 	}
 
@@ -248,34 +263,32 @@ public class FunctionReference<T> {
 		return false;
 	}
 
-	@SuppressWarnings("unchecked")
-	@Nullable
-	protected T[] execute(Event e) {
+	protected T @Nullable [] execute(Event event) {
 		// If needed, acquire the function reference
 		if (function == null)
-			function = (Function<? extends T>) Functions.getFunction(functionName);
-		
+			//noinspection unchecked
+			function = (Function<? extends T>) Functions.getFunction(functionName, script);
+
 		if (function == null) { // It might be impossible to resolve functions in some cases!
-			Skript.error("Couldn't resolve call for '" + functionName +
-				"'. Be careful when using functions in 'script load' events!");
+			Skript.error("Couldn't resolve call for '" + functionName + "'.");
 			return null; // Return nothing and hope it works
 		}
-		
+
 		// Prepare parameter values for calling
 		Object[][] params = new Object[singleListParam ? 1 : parameters.length][];
 		if (singleListParam && parameters.length > 1) { // All parameters to one list
 			List<Object> l = new ArrayList<>();
 			for (Expression<?> parameter : parameters)
-				l.addAll(Arrays.asList(parameter.getArray(e)));
+				l.addAll(Arrays.asList(parameter.getArray(event)));
 			params[0] = l.toArray();
-			
+
 			// Don't allow mutating across function boundary; same hack is applied to variables
 			for (int i = 0; i < params[0].length; i++) {
 				params[0][i] = Classes.clone(params[0][i]);
 			}
 		} else { // Use parameters in normal way
-			for (int i = 0; i < params.length; i++) {
-				Object[] array = parameters[i].getArray(e);
+			for (int i = 0; i < parameters.length; i++) {
+				Object[] array = parameters[i].getArray(event);
 				params[i] = Arrays.copyOf(array, array.length);
 				// Don't allow mutating across function boundary; same hack is applied to variables
 				for (int j = 0; j < params[i].length; j++) {
@@ -283,34 +296,84 @@ public class FunctionReference<T> {
 				}
 			}
 		}
-		
+
 		// Execute the function
 		return function.execute(params);
 	}
-	
+
 	public boolean isSingle() {
+		return contract.isSingle(parameters);
+	}
+
+	@Override
+	public boolean isSingle(Expression<?>... arguments) {
 		return single;
 	}
-	
-	@Nullable
-	public Class<? extends T> getReturnType() {
+
+	public @Nullable Class<? extends T> getReturnType() {
+		//noinspection unchecked
+		return (Class<? extends T>) contract.getReturnType(parameters);
+	}
+
+	@Override
+	public @Nullable Class<?> getReturnType(Expression<?>... arguments) {
 		if (signature == null)
 			throw new SkriptAPIException("Signature of function is null when return type is asked!");
-		
-		@SuppressWarnings("ConstantConditions")
+
 		ClassInfo<? extends T> ret = signature.returnType;
 		return ret == null ? null : ret.getC();
 	}
-	
-	public String toString(@Nullable Event e, boolean debug) {
+
+	/**
+	 * The contract is used in preference to the function for determining return type, etc.
+	 * @return The contract determining this function's parse-time hints, potentially this reference
+	 */
+	public Contract getContract() {
+		return contract;
+	}
+
+	public String toString(@Nullable Event event, boolean debug) {
 		StringBuilder b = new StringBuilder(functionName + "(");
 		for (int i = 0; i < parameters.length; i++) {
 			if (i != 0)
 				b.append(", ");
-			b.append(parameters[i].toString(e, debug));
+			b.append(parameters[i].toString(event, debug));
 		}
 		b.append(")");
 		return b.toString();
 	}
-	
+
+	@Override
+	public T[] execute(Event event, Object... arguments) {
+		// If needed, acquire the function reference
+		if (function == null)
+			//noinspection unchecked
+			function = (Function<? extends T>) Functions.getFunction(functionName, script);
+
+		if (function == null) { // It might be impossible to resolve functions in some cases!
+			Skript.error("Couldn't resolve call for '" + functionName + "'.");
+			return null; // Return nothing and hope it works
+		}
+		// We shouldn't trust the caller provided an array of arrays
+		Object[][] consigned = consign(arguments);
+		try {
+			return function.execute(consigned);
+		} finally {
+			this.resetReturnValue();
+		}
+	}
+
+	static Object[][] consign(Object... arguments) {
+		Object[][] consigned = new Object[arguments.length][];
+		for (int i = 0; i < consigned.length; i++) {
+			if (arguments[i] instanceof Object[] || arguments[i] == null) {
+				consigned[i] = (Object[]) arguments[i];
+			} else {
+				consigned[i] = new Object[]{arguments[i]};
+			}
+		}
+		return consigned;
+
+	}
+
 }

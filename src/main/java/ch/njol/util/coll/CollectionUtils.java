@@ -1,37 +1,13 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.util.coll;
 
 import ch.njol.util.Pair;
-import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.UnknownNullability;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.lang.reflect.Array;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * Utils for collections and arrays. All methods will not print any errors for <tt>null</tt> collections/arrays, but will return false/-1/etc.
@@ -101,7 +77,30 @@ public abstract class CollectionUtils {
 		}
 		return true;
 	}
-	
+
+	/**
+	 * Checks the elements of an array against a given predicate.
+	 *
+	 * @param array the array to check, can be null
+	 * @param predicate the predicate to test the elements against
+	 * @param and if true, all elements must satisfy the predicate; if false, any element satisfying the predicate is enough
+	 * @param <T> the type of elements in the array
+	 * @return true if the condition is met based on the value of the 'and' parameter, false otherwise
+	 */
+	public static <T> boolean check(T @Nullable [] array, Predicate<T> predicate, boolean and) {
+		if (array == null)
+			return false;
+		for (T value : array) {
+			boolean result = predicate.test(value);
+			// exit early if we find a FALSE and we're ANDing, or a TRUE and we're ORing
+			if (and && !result)
+				return false;
+			if (!and && result)
+				return true;
+		}
+		return and;
+	}
+
 	public static int indexOf(final @Nullable int[] array, final int num) {
 		if (array == null)
 			return -1;
@@ -251,6 +250,17 @@ public abstract class CollectionUtils {
 		}
 		return false;
 	}
+
+	/**
+	 * @return whether the given object is an instance of any of the given classes
+	 */
+	public static boolean isAnyInstanceOf(Object object, Class<?>... classes) {
+		for (Class<?> clazz : classes) {
+			if (clazz.isInstance(object))
+				return true;
+		}
+		return false;
+	}
 	
 	private final static Random random = new Random();
 	
@@ -344,7 +354,39 @@ public abstract class CollectionUtils {
 	public static <T> T[] array(final T... array) {
 		return array;
 	}
-	
+
+	/**
+	 * Returns a {@code Class} for an array type whose component type
+	 * is described by this {@linkplain Class}.
+	 *
+	 * @return a {@code Class} describing the array type
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Class<T[]> arrayType(Class<T> c) {
+		return (Class<T[]>) Array.newInstance(c, 0).getClass();
+	}
+
+	/**
+	 * Creates a new array whose elements are the elements between the start and end indices of the original array.
+	 * @param array the original array
+	 * @param startIndex starting index (inclusive)
+	 * @param endIndex ending index (exclusive)
+	 * @return a new array containing the elements between the start and end indices
+	 * @param <T> type of array
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> T[] subarray(T[] array, int startIndex, int endIndex) {
+		Class<T> componentType = (Class<T>) array.getClass().getComponentType();
+		startIndex = Math.max(startIndex, 0);
+		endIndex = Math.min(Math.max(endIndex, 0), array.length);
+		if (startIndex >= endIndex)
+			return (T[]) Array.newInstance(componentType, 0);
+		int size = endIndex - startIndex;
+		T[] subarray = (T[]) Array.newInstance(componentType, size);
+		System.arraycopy(array, startIndex, subarray, 0, size);
+		return subarray;
+	}
+
 	/**
 	 * Creates a permutation of all integers in the interval [start, end]
 	 * 
@@ -435,5 +477,5 @@ public abstract class CollectionUtils {
 		}
 		return wrapped;
 	}
-	
+
 }

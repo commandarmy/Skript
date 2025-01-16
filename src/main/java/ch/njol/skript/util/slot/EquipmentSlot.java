@@ -1,31 +1,14 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.util.slot;
 
 import java.util.Locale;
 
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.ItemStack;
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import ch.njol.skript.bukkitutil.PlayerUtils;
 import ch.njol.skript.registrations.Classes;
@@ -109,6 +92,18 @@ public class EquipmentSlot extends SlotWithIndex {
 			public void set(final EntityEquipment e, final @Nullable ItemStack item) {
 				e.setBoots(item);
 			}
+		},
+
+		BODY() {
+			@Override
+			public @Nullable ItemStack get(EntityEquipment equipment) {
+				return equipment.getItem(org.bukkit.inventory.EquipmentSlot.BODY);
+			}
+
+			@Override
+			public void set(EntityEquipment equipment, @Nullable ItemStack item) {
+				equipment.setItem(org.bukkit.inventory.EquipmentSlot.BODY, item);
+			}
 		};
 		
 		public final int slotNumber;
@@ -132,10 +127,18 @@ public class EquipmentSlot extends SlotWithIndex {
 	
 	private final EntityEquipment e;
 	private final EquipSlot slot;
+	private final int slotIndex;
 	private final boolean slotToString;
 	
 	public EquipmentSlot(final EntityEquipment e, final EquipSlot slot, final boolean slotToString) {
 		this.e = e;
+		int slotIndex = -1;
+		if (slot == EquipSlot.TOOL) {
+			Entity holder = e.getHolder();
+			if (holder instanceof Player)
+				slotIndex = ((Player) holder).getInventory().getHeldItemSlot();
+		}
+		this.slotIndex = slotIndex;
 		this.slot = slot;
 		this.slotToString = slotToString;
 	}
@@ -146,10 +149,12 @@ public class EquipmentSlot extends SlotWithIndex {
 	
 	@SuppressWarnings("null")
 	public EquipmentSlot(HumanEntity holder, int index) {
-		this.e = holder.getEquipment();
-		this.slot = values[41 - index]; // 6 entries in EquipSlot, indices descending
-		// So this math trick gets us the EquipSlot from inventory slot index
-		this.slotToString = true; // Referring to numeric slot id, right?
+		/*
+		 * slot: 6 entries in EquipSlot, indices descending
+		 *  So this math trick gets us the EquipSlot from inventory slot index
+		 * slotToString: Referring to numeric slot id, right?
+		 */
+		this(holder.getEquipment(), values[41 - index], true);
 	}
 
 	@Override
@@ -189,7 +194,8 @@ public class EquipmentSlot extends SlotWithIndex {
 
 	@Override
 	public int getIndex() {
-		return slot.slotNumber;
+		// use specific slotIndex if available
+		return slotIndex != -1 ? slotIndex : slot.slotNumber;
 	}
 
 	@Override

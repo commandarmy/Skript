@@ -1,27 +1,9 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.util.chat;
 
 import java.lang.reflect.Type;
 import java.util.Locale;
 
-import org.eclipse.jdt.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
@@ -89,7 +71,13 @@ public class MessageComponent {
 	 */
 	@Nullable
 	public String font;
-	
+
+	@Nullable
+	public String translation;
+
+	@Nullable
+	public String keybind;
+
 	public static class ClickEvent {
 		public ClickEvent(ClickEvent.Action action, String value) {
 			this.action = action;
@@ -103,7 +91,9 @@ public class MessageComponent {
 			
 			suggest_command,
 			
-			change_page;
+			change_page,
+
+			copy_to_clipboard;
 			
 			public final String spigotName;
 			
@@ -138,7 +128,7 @@ public class MessageComponent {
 			
 			@SuppressWarnings("null")
 			Action() {
-				spigotName = this.name().toUpperCase();
+				spigotName = this.name().toUpperCase(Locale.ENGLISH);
 			}
 		}
 		
@@ -171,6 +161,8 @@ public class MessageComponent {
 		messageComponent.clickEvent = this.clickEvent;
 		messageComponent.font = this.font;
 		messageComponent.hoverEvent = this.hoverEvent;
+		messageComponent.translation = translation;
+		messageComponent.keybind = keybind;
 		return messageComponent;
 	}
 

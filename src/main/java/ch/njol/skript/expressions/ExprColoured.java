@@ -1,28 +1,6 @@
-/**
- *   This file is part of Skript.
- *
- *  Skript is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  Skript is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Skript.  If not, see <http://www.gnu.org/licenses/>.
- *
- * Copyright Peter Güttinger, SkriptLang team and contributors
- */
 package ch.njol.skript.expressions;
 
-import org.bukkit.event.Event;
-import org.eclipse.jdt.annotation.Nullable;
-
 import ch.njol.skript.Skript;
-import ch.njol.skript.classes.Converter;
 import ch.njol.skript.doc.Description;
 import ch.njol.skript.doc.Examples;
 import ch.njol.skript.doc.Name;
@@ -34,17 +12,19 @@ import ch.njol.skript.lang.SkriptParser.ParseResult;
 import ch.njol.skript.util.Utils;
 import ch.njol.skript.util.chat.ChatMessages;
 import ch.njol.util.Kleenean;
+import org.bukkit.event.Event;
+import org.jetbrains.annotations.Nullable;
 
-@Name("Coloured / Uncoloured")
-@Description({"Parses &lt;colour&gt;s and, optionally, chat styles in a message or removes",
-		"any colours <i>and</i> chat styles from the message. Parsing all",
+@Name("Colored / Uncolored")
+@Description({"Parses &lt;color&gt;s and, optionally, chat styles in a message or removes",
+		"any colors <i>and</i> chat styles from the message. Parsing all",
 		"chat styles requires this expression to be used in same line with",
 		"the <a href=effects.html#EffSend>send effect</a>."})
 @Examples({"on chat:",
-		"	set message to coloured message # Safe; only colors get parsed",
+		"	set message to colored message # Safe; only colors get parsed",
 		"command /fade &lt;player&gt;:",
 		"	trigger:",
-		"		set display name of the player-argument to uncoloured display name of the player-argument",
+		"		set display name of the player-argument to uncolored display name of the player-argument",
 		"command /format &lt;text&gt;:",
 		"	trigger:",
 		"		message formatted text-argument # Safe, because we're sending to whoever used this command"})
@@ -78,12 +58,7 @@ public class ExprColoured extends PropertyExpression<String, String> {
 	
 	@Override
 	protected String[] get(final Event e, final String[] source) {
-		return get(source, new Converter<String, String>() {
-			@Override
-			public String convert(final String s) {
-				return color ? Utils.replaceChatStyles(s) : "" + ChatMessages.stripStyles(s);
-			}
-		});
+		return get(source, s -> color ? Utils.replaceChatStyles(s) : "" + ChatMessages.stripStyles(s));
 	}
 	
 	@Override
@@ -93,7 +68,7 @@ public class ExprColoured extends PropertyExpression<String, String> {
 	
 	@Override
 	public String toString(final @Nullable Event e, final boolean debug) {
-		return (color ? "" : "un") + "coloured " + getExpr().toString(e, debug);
+		return (color ? "" : "un") + "colored " + getExpr().toString(e, debug);
 	}
 	
 	/**
